@@ -42,15 +42,16 @@ To become the most trusted and efficient way for homeowners to manage any home r
 ### F1: Multimodal Job Submission
 - **Description:** The user initiates a new service request by providing media and a brief description.
 - **Requirements:**
-    - User can record or upload a video (up to 60 seconds).
+    - User can record or upload a video or audio (up to 60 seconds).
     - User can upload up to 5 photos.
-    - User can optionally add a voice note or text description.
+    - User can add a voice note or text description.
     - The interface will be media-first, guiding the user to "show, not just tell."
 
 ### F2: AI-Powered Scope Generation
 - **Description:** The Gemini-powered agent analyzes the user's input to understand the problem and create a standardized job description.
 - **Requirements:**
-    - Analyze video, images, and audio/text to identify the core issue.
+    - ISSUE CLASSIFIER + SCOPE IDENTIFIER
+    - Analyze video, images, and audio/text to identify the core issue AND SEVERITY + OTHER DETAILS (I.E. HOW BIG, MANY ROOMS, AUTOFILL URGENCY BUT TAKE USER INPUT).
     - Classify the job into a primary category (e.g., Plumbing, Electrical, HVAC).
     - Generate a concise, standardized "Scope of Work" that can be sent to contractors.
     - Assess and flag potential urgency (e.g., active water leak).
@@ -59,8 +60,9 @@ To become the most trusted and efficient way for homeowners to manage any home r
 - **Description:** The agent sends the generated scope of work to a curated list of local service providers.
 - **Requirements:**
     - Identify top-rated local providers using integrated databases or web scraping.
-    - Automatically pre-fill online quote forms or dispatch templated emails with the job scope and media.
+    - Automatically pre-fill online quote forms or dispatch templated emails with the job scope and media. (TaskRabbit & Thumbtack)
     - The user's personal contact information remains anonymous until they choose to book.
+    - REACH OUT WHERE NECESSARY ON BEHALF OF THE USER THROUGH TEXT, PHONE CALL, OR EMAIL
 
 ### F4: Quote Normalization & Comparison
 - **Description:** The agent receives quotes in various formats (email, PDF, text), extracts the key data, and presents it in a uniform, easy-to-understand format.
@@ -69,6 +71,7 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - Extract key data points: Total Cost, Labor/Materials Breakdown, Estimated Timeline, Warranty Information.
     - Display up to 3 quotes in a clean, side-by-side comparison UI.
     - Red-flag quotes that are significant outliers (either too high or too low).
+    - KEEP TRACK OF REVIEWS AND SCORES TO PROVIDE TO USER AT THE END
 
 ### F5: Automated Contractor Vetting
 - **Description:** The agent provides crucial trust and safety information for each bidding contractor.
@@ -77,12 +80,18 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - Aggregate review scores from multiple platforms (Google, Yelp, etc.).
     - Generate a summary of recent positive and negative review themes.
 
-### F6: One-Tap Booking
+### F6: Assets Generation for User
+- **Description:** Generates videos and graphics of the side by side comparisons of options (tradeoffs, etc.) to make it easy to understand and in native tongue -> language agnostic (in spanish or korean)
+
+### F7: One-Tap Booking
 - **Description:** Once the user selects a quote, the agent handles the initial scheduling communication.
 - **Requirements:**
     - User can select their preferred quote with a single tap.
     - The agent sends an automated confirmation to the chosen contractor to schedule the appointment.
     - The app displays the confirmed appointment details to the user.
+
+### *F8: AUTOMATED BOOKING
+- **Description:** Take users gogole calendar or let user provide time windows and dates that would work and then the user books on behalf of the user in their availability and sends an email or some update to indicate it's been scheduled. (INTEGRATE WITH GOOGLE CALENDAR)
 
 ---
 
@@ -93,6 +102,7 @@ To become the most trusted and efficient way for homeowners to manage any home r
 3.  **Processing:** An engaging loading screen shows the agent's progress: "Analyzing issue...", "Finding top pros...", "Requesting quotes..." This screen manages expectations, noting it may take 24-48 hours.
 4.  **Notification:** User receives a push notification: "Your quotes are ready for review!"
 5.  **Review:** The user opens the app to the comparison screen, where they can see the normalized quotes, vetting info, and review summaries.
+6.  **COmparison:** Generate assets that help the user compare and understand tradeoffs
 6.  **Book:** The user taps "Book This Pro" on their chosen option.
 7.  **Confirmation:** The app confirms the booking and provides all necessary details for the upcoming service appointment.
 
@@ -102,8 +112,6 @@ To become the most trusted and efficient way for homeowners to manage any home r
 
 - **Automated Negotiation:** Agent can intelligently email a higher bidder to see if they can match a competitor's price for the same scope.
 - **Advanced Sensing & BoQ:** Integrate with phone LiDAR/ARKit to capture measurements and generate a detailed Bill of Quantities (BoQ).
-- **Language Agnostic Interface:** Generate comparison summaries and communicate with users in their preferred language (e.g., Spanish, Korean).
-- **Generative Media Summaries:** Create short, animated videos that visually explain the differences between quotes.
 - **Payment Integration:** Allow users to securely pay contractors through the app.
 
 ---
