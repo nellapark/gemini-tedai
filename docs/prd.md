@@ -42,10 +42,15 @@ To become the most trusted and efficient way for homeowners to manage any home r
 ### F1: Multimodal Job Submission
 - **Description:** The user initiates a new service request by providing media and a brief description.
 - **Requirements:**
+    - Gemini's Live API with video streaming (have this as recommended option in addition to uploading video) - User records a 30-second walkthrough with their phone -> Stream video in real-time to Gemini while they narrate -> AI provides immediate spoken feedback: "I see a leaking pipe under the sink, approximately 1.5 inches in diameter"
     - User can record or upload a video or audio (up to 60 seconds).
+      - Video could also be Thermal camera footage for insulation/HVAC issues, Sound level measurements for noise complaints, etc.
     - User can upload up to 5 photos.
     - User can add a voice note or text description.
     - The interface will be media-first, guiding the user to "show, not just tell."
+- **LATER:** Shot-List Coach (video gen)
+  - If input footage is weak, auto-generate a short instruction video: “Stand 6 ft away, pan slowly; capture shutoff valve; include tape measure in frame,” then prompt the user to re-record.
+
 
 ### F2: AI-Powered Scope Generation
 - **Description:** The Gemini-powered agent analyzes the user's input to understand the problem and create a standardized job description.
@@ -56,6 +61,8 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - Generate a concise, standardized "Scope of Work" that can be sent to contractors.
     - Assess and flag potential urgency (e.g., active water leak).
     - GENERATE ASSETS -> Auto-generate detailed scope-of-work PDFs with annotated photos, measurements, and clear descriptions
+      - The Contractor Brief Generator: A professional, standardized PDF document that looks like something a general contractor or project manager would create -> basically an auto-generated "Scope of Work" document to send to the contractor .
+      - WHY: When homeowners contact contractors, they usually send messy texts like: "My pipe is leaking can you come fix it?" -> Contractor has to ask 20 follow-up questions -> Wastes everyone's time
 
 ### F3: Automated Quote Requesting
 - **Description:** The agent sends the generated scope of work to a curated list of local service providers.
@@ -120,6 +127,7 @@ To become the most trusted and efficient way for homeowners to manage any home r
 
 ## 5. Post-MVP Features (V2.0 and Beyond)
 
+- **LiDAR/ARKit Depth + Video Integration:** Use iPhone's LiDAR sensor to capture room dimensions & Combine with video for spatial context. (Generate accurate measurements without manual input)
 - **Automated Negotiation:** Agent can intelligently email a higher bidder to see if they can match a competitor's price for the same scope.
 - **Advanced Sensing & BoQ:** Integrate with phone LiDAR/ARKit to capture measurements and generate a detailed Bill of Quantities (BoQ).
 - **Payment Integration:** Allow users to securely pay contractors through the app.
