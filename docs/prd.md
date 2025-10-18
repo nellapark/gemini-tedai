@@ -55,6 +55,7 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - Classify the job into a primary category (e.g., Plumbing, Electrical, HVAC).
     - Generate a concise, standardized "Scope of Work" that can be sent to contractors.
     - Assess and flag potential urgency (e.g., active water leak).
+    - GENERATE ASSETS -> Auto-generate detailed scope-of-work PDFs with annotated photos, measurements, and clear descriptions
 
 ### F3: Automated Quote Requesting
 - **Description:** The agent sends the generated scope of work to a curated list of local service providers.
@@ -81,7 +82,8 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - Generate a summary of recent positive and negative review themes.
 
 ### F6: Assets Generation for User
-- **Description:** Generates videos and graphics of the side by side comparisons of options (tradeoffs, etc.) to make it easy to understand and in native tongue -> language agnostic (in spanish or korean)
+- **Description:** Generates videos (with generated music) and graphics of the side by side comparisons of options (tradeoffs, etc.) to make it easy to understand and in native tongue -> language agnostic (in spanish or korean)
+- **Implementation:** Create these assets and put it in their Google Drive (GSuite integration)
 
 ### F7: One-Tap Booking
 - **Description:** Once the user selects a quote, the agent handles the initial scheduling communication.
@@ -91,8 +93,16 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - The app displays the confirmed appointment details to the user.
 
 ### *F8: AUTOMATED BOOKING
-- **Description:** Take users gogole calendar or let user provide time windows and dates that would work and then the user books on behalf of the user in their availability and sends an email or some update to indicate it's been scheduled. (INTEGRATE WITH GOOGLE CALENDAR)
+- **Description:** Take users gogole calendar or let user provide time windows and dates that would work and then the user books on behalf of the user in their availability and sends an email or some update to indicate it's been scheduled. (INTEGRATE WITH GOOGLE CALENDAR - GSUITE)
 
+
+### THE MAIN PAGE SHOULD BE A DASHBOARD WITH LIVE BIDS (ROLLING) WITH COMPARISONS -> ETC. (ASSETS GET UPDATED IN REAL TIME)
+  - Generate real-time visual comparisons as quotes come in
+  - Create risk/quality matrices with contractor photos and ratings
+  - Generate "red flag" warning graphics for suspicious quotes
+
+---
+**EXAMPLE DEMO:**  Live video of a plumbing issue → instant analysis → auto-generated scope document → mock quotes → visual comparison is incredibly satisfying to watch
 ---
 
 ## 4. User Flow (MVP)
