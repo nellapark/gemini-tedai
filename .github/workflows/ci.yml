@@ -1,0 +1,70 @@
+name: CI - Code Quality & Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Check TypeScript compilation
+      run: npm run type-check
+      
+    - name: Run linter
+      run: npm run lint
+      continue-on-error: true
+      
+    - name: Check for code duplication
+      run: npm run check-duplication
+      continue-on-error: true
+      
+    - name: Run tests
+      run: npm test
+      
+    - name: Build project
+      run: npm run build
+
+  test-coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run tests with coverage
+      run: npm run test:coverage
+      continue-on-error: true
+      
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      if: always()
+      continue-on-error: true
+      with:
+        files: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
