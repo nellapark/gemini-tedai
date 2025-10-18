@@ -1,4 +1,3 @@
-
 # Gemini API Integration Guide: QuoteScout
 
 This document provides developers with the specific models, prompts, and configurations required to implement the core AI features of QuoteScout using the Google Gemini API. All calls should be made from a secure backend service.

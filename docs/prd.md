@@ -1,4 +1,3 @@
-
 # Product Requirements Document: QuoteScout
 
 ## 1. Introduction

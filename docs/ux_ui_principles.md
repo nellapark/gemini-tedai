@@ -1,4 +1,3 @@
-
 # UX/UI Design Principles: QuoteScout
 
 ## 1. Core Philosophy: Effortless Clarity

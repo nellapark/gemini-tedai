@@ -1,4 +1,3 @@
-
 # Technical Specification: QuoteScout
 
 ## 1. System Architecture
