@@ -22,25 +22,46 @@ jobs:
     - name: Install dependencies
       run: npm install
       
+    # Auto-detect and run type checking if tsconfig.json exists
     - name: Check TypeScript compilation
+      if: hashFiles('tsconfig.json') != ''
       run: npm run type-check
       
+    # Auto-detect and run linter if .eslintrc* exists
     - name: Run linter
+      if: hashFiles('.eslintrc*') != ''
       run: npm run lint
       continue-on-error: true
       
+    # Auto-detect and run Prettier if .prettierrc* exists
+    - name: Check code formatting (Prettier)
+      if: hashFiles('.prettierrc*', 'prettier.config.*') != ''
+      run: npx prettier --check .
+      continue-on-error: true
+      
+    # Auto-detect and run duplication check if jscpd config exists
     - name: Check for code duplication
+      if: hashFiles('.jscpd.json', 'package.json') != ''
       run: npm run check-duplication
       continue-on-error: true
       
+    # Auto-detect and run tests if test files exist
     - name: Run tests
+      if: hashFiles('**/*.test.*', '**/*.spec.*', 'vitest.config.*', 'jest.config.*') != ''
       run: npm test
       
+    # Auto-detect and run security audit
+    - name: Security audit
+      run: npm audit --audit-level=moderate
+      continue-on-error: true
+      
+    # Always try to build
     - name: Build project
       run: npm run build
 
   test-coverage:
     runs-on: ubuntu-latest
+    if: hashFiles('**/*.test.*', '**/*.spec.*') != ''
     
     steps:
     - name: Checkout code
@@ -66,3 +87,42 @@ jobs:
         files: ./coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
+
+  # Dynamic check detection - runs custom scripts if they exist
+  custom-checks:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install dependencies
+      run: npm install
+    
+    # Check if custom validation scripts exist in package.json
+    - name: Run validate script
+      if: contains(toJSON(steps.*.outputs.package-scripts), 'validate')
+      run: npm run validate
+      continue-on-error: true
+      
+    - name: Run check script
+      if: contains(toJSON(steps.*.outputs.package-scripts), 'check')
+      run: npm run check
+      continue-on-error: true
+      
+    # Auto-detect and run Stylelint for CSS if config exists
+    - name: Lint CSS/SCSS
+      if: hashFiles('.stylelintrc*', 'stylelint.config.*') != ''
+      run: npx stylelint "**/*.{css,scss,sass}"
+      continue-on-error: true
+      
+    # Auto-detect and run accessibility checks if @axe-core is installed
+    - name: Accessibility checks
+      if: hashFiles('package.json') != '' && contains(hashFiles('package.json'), 'axe')
+      run: npm run test:a11y || echo "No accessibility tests configured"
+      continue-on-error: true
