@@ -1,0 +1,8 @@
+{
+  "name": "QuoteScout: The AI Home Service Agent",
+  "description": "An AI-powered agent that simplifies getting competitive quotes for home services like plumbing, electrical, and HVAC. Users upload media of the issue, and the agent handles the rest—from defining the scope and gathering quotes to vetting contractors and scheduling the job.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
