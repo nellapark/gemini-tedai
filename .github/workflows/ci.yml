@@ -47,7 +47,7 @@ jobs:
       
     # Auto-detect and run tests if test files exist
     - name: Run tests
-      if: hashFiles('**/*.test.*', '**/*.spec.*', 'vitest.config.*', 'jest.config.*') != ''
+      if: hashFiles('**/*.test.*', '**/*.spec.*') != ''
       run: npm test
       
     # Auto-detect and run security audit
