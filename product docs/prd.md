@@ -67,7 +67,7 @@ To become the most trusted and efficient way for homeowners to manage any home r
 ### F3: Automated Quote Requesting
 - **Description:** The agent sends the generated scope of work to a curated list of local service providers.
 - **Requirements:**
-    - Identify top-rated local providers using integrated databases or web scraping.
+    - Identify top-rated local providers using integrated databases or web scraping. (GOOGLE COMPUTER USE)
     - Automatically pre-fill online quote forms or dispatch templated emails with the job scope and media. (TaskRabbit & Thumbtack)
     - The user's personal contact information remains anonymous until they choose to book.
     - REACH OUT WHERE NECESSARY ON BEHALF OF THE USER THROUGH TEXT, PHONE CALL, OR EMAIL
