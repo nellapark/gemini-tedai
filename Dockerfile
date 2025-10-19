@@ -12,7 +12,11 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the React app
+# Accept API key as build argument
+ARG VITE_GEMINI_API_KEY
+ENV VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY
+
+# Build the React app (Vite will embed VITE_GEMINI_API_KEY into the bundle)
 RUN npm run build
 
 # Production stage
