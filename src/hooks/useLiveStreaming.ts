@@ -23,6 +23,7 @@ export const useLiveStreaming = (
   const currentSessionIdRef = useRef<string>('');
   const audioContextRef = useRef<AudioContext | null>(null);
   const playbackAudioContextRef = useRef<AudioContext | null>(null);
+  const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const audioQueueRef = useRef<AudioBuffer[]>([]);
   const isPlayingRef = useRef<boolean>(false);
   const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
@@ -53,6 +54,57 @@ export const useLiveStreaming = (
     }
   };
 
+  const createCombinedStream = async (userMediaStream: MediaStream): Promise<MediaStream> => {
+    console.log('🎬 Creating combined stream for recording...');
+    console.log('   User media stream tracks:', userMediaStream.getTracks().map(t => t.kind));
+    console.log('   Gemini audio destination available:', !!audioDestinationRef.current);
+    
+    // Create an audio context for mixing
+    const mixingContext = new AudioContext();
+    
+    // Create destination for the mixed audio
+    const mixedAudioDestination = mixingContext.createMediaStreamDestination();
+    
+    // Add user's audio to the mix
+    const userAudioSource = mixingContext.createMediaStreamSource(userMediaStream);
+    userAudioSource.connect(mixedAudioDestination);
+    console.log('   ✅ Connected user audio to mixer');
+    
+    // Add Gemini's audio to the mix (if available)
+    if (audioDestinationRef.current) {
+      const geminiAudioStream = audioDestinationRef.current.stream;
+      console.log('   Gemini audio stream tracks:', geminiAudioStream.getTracks().map(t => t.kind));
+      
+      if (geminiAudioStream.getAudioTracks().length > 0) {
+        const geminiAudioSource = mixingContext.createMediaStreamSource(geminiAudioStream);
+        geminiAudioSource.connect(mixedAudioDestination);
+        console.log('   ✅ Connected Gemini audio to mixer');
+      } else {
+        console.log('   ⚠️ Gemini audio stream has no tracks yet');
+      }
+    } else {
+      console.log('   ⚠️ Gemini audio destination not available');
+    }
+    
+    // Create new stream with video from user + mixed audio
+    const combinedStream = new MediaStream();
+    
+    // Add video tracks
+    userMediaStream.getVideoTracks().forEach(track => {
+      combinedStream.addTrack(track);
+      console.log('   ✅ Added video track to combined stream');
+    });
+    
+    // Add mixed audio tracks
+    mixedAudioDestination.stream.getAudioTracks().forEach(track => {
+      combinedStream.addTrack(track);
+      console.log('   ✅ Added mixed audio track to combined stream');
+    });
+    
+    console.log('🎬 Combined stream created with', combinedStream.getTracks().length, 'tracks');
+    return combinedStream;
+  };
+
   const startStreaming = async () => {
     console.log('🚀 startStreaming called!');
     console.log('Media stream available:', !!mediaStream);
@@ -64,6 +116,25 @@ export const useLiveStreaming = (
     }
 
     try {
+      // Initialize audio context and destination for Gemini's audio FIRST
+      // This must be ready before we start recording
+      if (!playbackAudioContextRef.current) {
+        playbackAudioContextRef.current = new AudioContext();
+        audioDestinationRef.current = playbackAudioContextRef.current.createMediaStreamDestination();
+        
+        // Create a silent oscillator to initialize the audio track in the destination stream
+        // This ensures the MediaStreamDestination has an audio track from the start
+        const silentOscillator = playbackAudioContextRef.current.createOscillator();
+        const silentGain = playbackAudioContextRef.current.createGain();
+        silentGain.gain.value = 0; // Silent
+        silentOscillator.connect(silentGain);
+        silentGain.connect(audioDestinationRef.current);
+        silentOscillator.start();
+        
+        console.log('🔊 Created AudioContext and recording destination for Gemini audio');
+        console.log('   Audio destination stream tracks:', audioDestinationRef.current.stream.getTracks().length);
+      }
+      
           // Initialize WebSocket connection to Gemini Live API
           // Get API key from runtime config (production) or Vite env (development)
           // @ts-ignore - Runtime config
@@ -266,7 +337,9 @@ Remember: You're helping them document and understand their repair issue through
           // Initialize playback audio context if not exists
           if (!playbackAudioContextRef.current) {
             playbackAudioContextRef.current = new AudioContext();
-            console.log('🔊 Created new AudioContext for playback');
+            // Create destination for recording Gemini's audio
+            audioDestinationRef.current = playbackAudioContextRef.current.createMediaStreamDestination();
+            console.log('🔊 Created new AudioContext for playback with recording destination');
           }
           
           const audioContext = playbackAudioContextRef.current;
@@ -352,7 +425,14 @@ Remember: You're helping them document and understand their repair issue through
         
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
+        
+        // Connect to speakers for playback
         source.connect(audioContext.destination);
+        
+        // Also connect to recording destination if available
+        if (audioDestinationRef.current) {
+          source.connect(audioDestinationRef.current);
+        }
         
         // Store reference to current audio source so we can stop it if needed
         currentAudioSourceRef.current = source;
@@ -387,7 +467,10 @@ Remember: You're helping them document and understand their repair issue through
       };
 
       // Start recording video for playback
-      const mediaRecorder = new MediaRecorder(mediaStream, {
+      // Create combined stream with user's video/audio + Gemini's audio
+      const recordingStream = await createCombinedStream(mediaStream);
+      
+      const mediaRecorder = new MediaRecorder(recordingStream, {
         mimeType: 'video/webm;codecs=vp9,opus'
       });
       mediaRecorderRef.current = mediaRecorder;
@@ -867,6 +950,9 @@ Remember: You're helping them document and understand their repair issue through
       playbackAudioContextRef.current.close();
       playbackAudioContextRef.current = null;
     }
+    
+    // Clear audio destination reference
+    audioDestinationRef.current = null;
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();

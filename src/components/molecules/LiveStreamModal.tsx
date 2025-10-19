@@ -51,14 +51,22 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
     if (videoRef.current && mediaStream && (streamState === 'idle' || streamState === 'streaming')) {
       videoRef.current.srcObject = mediaStream;
     }
+    
+    // Clear the live video srcObject when switching to playback
+    if (videoRef.current && streamState === 'stopped') {
+      videoRef.current.srcObject = null;
+    }
   }, [videoRef, mediaStream, streamState]);
 
   useEffect(() => {
-    if (playbackVideoRef.current && selectedSession && streamState !== 'streaming') {
+    if (playbackVideoRef.current && selectedSession && streamState === 'stopped') {
       const session = sessions.find(s => s.id === selectedSession);
       if (session && session.videoUrl) {
+        console.log('📹 Setting playback video source:', session.videoUrl);
         playbackVideoRef.current.src = session.videoUrl;
         playbackVideoRef.current.load();
+      } else {
+        console.warn('⚠️ Session not found or no video URL:', selectedSession);
       }
     }
   }, [selectedSession, sessions, streamState]);
@@ -126,6 +134,7 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
               </>
             ) : selectedSession && streamState === 'stopped' ? (
               <video
+                key={`playback-${selectedSession}`}
                 ref={playbackVideoRef}
                 controls
                 className="w-full h-full object-cover"
