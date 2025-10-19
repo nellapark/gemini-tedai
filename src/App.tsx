@@ -26,6 +26,9 @@ function App() {
 
   const audioRecording = useAudioRecording(mediaFiles, setMediaFiles, setError, inputMode, setInputMode);
 
+  // Check if there are video or image files (audio files don't prevent live streaming)
+  const hasVisualMedia = mediaFiles.some(file => file.type === 'video' || file.type === 'image');
+
   const startLiveStreaming = async () => {
     try {
       setIsLiveStreaming(true);
@@ -182,6 +185,7 @@ function App() {
             <LiveStreamingSection
               isStreaming={isLiveStreaming}
               inputMode={inputMode}
+              hasVisualMedia={hasVisualMedia}
               onStart={startLiveStreaming}
               onStop={stopLiveStreaming}
             />

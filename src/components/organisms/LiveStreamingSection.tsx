@@ -3,11 +3,12 @@ import { VideoIcon } from '../Icons';
 import { Button } from '../atoms/Button';
 import { Badge } from '../atoms/Badge';
 import { RecordingIndicator } from '../molecules/RecordingIndicator';
-import { InputMode } from '../../types';
+import { InputMode, MediaFile } from '../../types';
 
 interface LiveStreamingSectionProps {
   isStreaming: boolean;
   inputMode: InputMode;
+  hasVisualMedia: boolean;
   onStart: () => void;
   onStop: () => void;
 }
@@ -15,6 +16,7 @@ interface LiveStreamingSectionProps {
 export const LiveStreamingSection: React.FC<LiveStreamingSectionProps> = ({
   isStreaming,
   inputMode,
+  hasVisualMedia,
   onStart,
   onStop,
 }) => {
@@ -37,7 +39,7 @@ export const LiveStreamingSection: React.FC<LiveStreamingSectionProps> = ({
           variant="success"
           fullWidth
           onClick={onStart}
-          disabled={inputMode === 'upload'}
+          disabled={hasVisualMedia}
           className="py-4"
         >
           <VideoIcon className="w-5 h-5 mr-2" />
@@ -52,9 +54,9 @@ export const LiveStreamingSection: React.FC<LiveStreamingSectionProps> = ({
         </div>
       )}
 
-      {inputMode === 'upload' && (
+      {hasVisualMedia && (
         <p className="text-xs text-neutral-500 mt-2 text-center">
-          Clear uploaded media to use live streaming
+          Clear uploaded video/photos to use live streaming
         </p>
       )}
     </div>
