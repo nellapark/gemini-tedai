@@ -3,6 +3,7 @@ export interface MediaFile {
   type: 'video' | 'image' | 'audio';
   preview?: string;
   annotation?: string;
+  source?: 'upload' | 'live-stream'; // Track where the media came from
 }
 
 export interface AnalysisResult {

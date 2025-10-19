@@ -159,6 +159,7 @@ export const useAudioRecording = (
         file,
         type: 'audio' as const,
         annotation: '',
+        source: 'upload' as const,
       };
     });
 

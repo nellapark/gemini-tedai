@@ -52,6 +52,7 @@ function App() {
           type: 'video' as const,
           preview: session.videoUrl!,
           annotation: `Live stream session from ${session.timestamp.toLocaleString()}\nDuration: ${Math.floor(session.duration / 60)}:${Math.floor(session.duration % 60).toString().padStart(2, '0')}`,
+          source: 'live-stream' as const,
         };
       });
 
@@ -64,8 +65,11 @@ function App() {
 
   const liveStreaming = useLiveStreaming(setError, handleStreamingStopped, handleSessionsUploaded);
 
-  // Check if there are video or image files (audio files don't prevent live streaming)
-  const hasVisualMedia = mediaFiles.some(file => file.type === 'video' || file.type === 'image');
+  // Check if there are uploaded video or image files (not from live streaming)
+  // Audio files and live-stream videos don't prevent live streaming
+  const hasVisualMedia = mediaFiles.some(file => 
+    (file.type === 'video' || file.type === 'image') && file.source !== 'live-stream'
+  );
 
   const startLiveStreaming = async () => {
     try {
@@ -96,7 +100,7 @@ function App() {
       if (type === 'image' || type === 'video') {
         preview = URL.createObjectURL(file);
       }
-      return { file, type, preview, annotation: '' };
+      return { file, type, preview, annotation: '', source: 'upload' };
     });
 
     if (type === 'video') {

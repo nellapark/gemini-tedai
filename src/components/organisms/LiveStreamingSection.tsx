@@ -56,7 +56,7 @@ export const LiveStreamingSection: React.FC<LiveStreamingSectionProps> = ({
 
       {hasVisualMedia && (
         <p className="text-xs text-neutral-500 mt-2 text-center">
-          Clear uploaded video/photos to use live streaming
+          Clear manually uploaded video/photos to use live streaming
         </p>
       )}
     </div>
