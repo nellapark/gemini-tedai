@@ -24,6 +24,9 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({
     safety: true,
     measurements: false,
     recommendations: true,
+    history: true,
+    timeline: true,
+    concerns: true,
   });
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
@@ -203,6 +206,129 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({
               </div>
             )}
           </section>
+
+          {/* Issue History & Context */}
+          {result.issueHistory && (
+            <section className="mb-8">
+              <button
+                onClick={() => toggleSection('history')}
+                className="w-full flex items-center justify-between p-4 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors"
+              >
+                <h2 className="text-xl font-bold text-neutral-800">Issue History & Context</h2>
+                <span className="text-2xl text-neutral-600">{expandedSections.history ? '−' : '+'}</span>
+              </button>
+              {expandedSections.history && (
+                <div className="mt-4 p-6 bg-white border-2 border-indigo-200 rounded-xl space-y-4">
+                  {result.issueHistory.whenStarted && (
+                    <div className="bg-indigo-50 p-4 rounded-lg">
+                      <p className="text-sm font-semibold text-indigo-900 mb-1">When It Started</p>
+                      <p className="text-neutral-700">{result.issueHistory.whenStarted}</p>
+                    </div>
+                  )}
+                  
+                  {result.issueHistory.howItHappened && (
+                    <div className="bg-indigo-50 p-4 rounded-lg">
+                      <p className="text-sm font-semibold text-indigo-900 mb-1">How It Happened</p>
+                      <p className="text-neutral-700">{result.issueHistory.howItHappened}</p>
+                    </div>
+                  )}
+                  
+                  {result.issueHistory.previousAttempts && result.issueHistory.previousAttempts.length > 0 && (
+                    <div className="bg-indigo-50 p-4 rounded-lg">
+                      <p className="text-sm font-semibold text-indigo-900 mb-2">Previous Fix Attempts</p>
+                      <ul className="space-y-1">
+                        {result.issueHistory.previousAttempts.map((attempt, idx) => (
+                          <li key={idx} className="text-neutral-700">• {attempt}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* User Timeline & Scheduling */}
+          {result.userTimeline && (
+            <section className="mb-8">
+              <button
+                onClick={() => toggleSection('timeline')}
+                className="w-full flex items-center justify-between p-4 bg-cyan-50 rounded-xl hover:bg-cyan-100 transition-colors"
+              >
+                <h2 className="text-xl font-bold text-neutral-800">Timeline & Scheduling Requirements</h2>
+                <span className="text-2xl text-neutral-600">{expandedSections.timeline ? '−' : '+'}</span>
+              </button>
+              {expandedSections.timeline && (
+                <div className="mt-4 p-6 bg-white border-2 border-cyan-200 rounded-xl space-y-4">
+                  {result.userTimeline.desiredCompletionDate && (
+                    <div className="bg-cyan-50 p-4 rounded-lg border-l-4 border-cyan-500">
+                      <p className="text-sm font-semibold text-cyan-900 mb-1">Desired Completion</p>
+                      <p className="text-lg font-bold text-cyan-800">{result.userTimeline.desiredCompletionDate}</p>
+                    </div>
+                  )}
+                  
+                  {result.userTimeline.schedulingConstraints && result.userTimeline.schedulingConstraints.length > 0 && (
+                    <div className="bg-cyan-50 p-4 rounded-lg">
+                      <p className="text-sm font-semibold text-cyan-900 mb-2">Scheduling Constraints</p>
+                      <ul className="space-y-1">
+                        {result.userTimeline.schedulingConstraints.map((constraint, idx) => (
+                          <li key={idx} className="text-neutral-700 flex items-start">
+                            <span className="text-cyan-600 mr-2">🕒</span>
+                            {constraint}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* User Concerns & Environmental Factors */}
+          {((result.userConcerns && result.userConcerns.length > 0) || 
+            (result.environmentalFactors && result.environmentalFactors.length > 0)) && (
+            <section className="mb-8">
+              <button
+                onClick={() => toggleSection('concerns')}
+                className="w-full flex items-center justify-between p-4 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
+              >
+                <h2 className="text-xl font-bold text-neutral-800">Additional Concerns & Factors</h2>
+                <span className="text-2xl text-neutral-600">{expandedSections.concerns ? '−' : '+'}</span>
+              </button>
+              {expandedSections.concerns && (
+                <div className="mt-4 p-6 bg-white border-2 border-amber-200 rounded-xl space-y-4">
+                  {result.userConcerns && result.userConcerns.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900 mb-3">User Concerns & Priorities</p>
+                      <ul className="space-y-2">
+                        {result.userConcerns.map((concern, idx) => (
+                          <li key={idx} className="flex items-start bg-amber-50 p-3 rounded-lg">
+                            <span className="text-amber-600 mr-2 mt-0.5">💭</span>
+                            <span className="text-neutral-700">{concern}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {result.environmentalFactors && result.environmentalFactors.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900 mb-3">Environmental & Situational Factors</p>
+                      <ul className="space-y-2">
+                        {result.environmentalFactors.map((factor, idx) => (
+                          <li key={idx} className="flex items-start bg-amber-50 p-3 rounded-lg">
+                            <span className="text-amber-600 mr-2 mt-0.5">🌍</span>
+                            <span className="text-neutral-700">{factor}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Visible Damage */}
           {result.visibleDamage && result.visibleDamage.length > 0 && (

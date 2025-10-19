@@ -66,10 +66,10 @@ To become the most trusted and efficient way for homeowners to manage any home r
 ### F3: Automated Quote Requesting
 - **Description:** The agent sends the generated scope of work to a curated list of local service providers.
 - **Requirements:**
-    - Identify top-rated local providers using integrated databases or web scraping. (GOOGLE COMPUTER USE)
+    - [IMPLEMENT LATER] Identify top-rated local providers using integrated databases or web scraping. (GOOGLE COMPUTER USE)
     - Automatically pre-fill online quote forms or dispatch templated emails with the job scope and media. (TaskRabbit & Thumbtack)
     - The user's personal contact information remains anonymous until they choose to book.
-    - REACH OUT WHERE NECESSARY ON BEHALF OF THE USER THROUGH TEXT, PHONE CALL, OR EMAIL
+    - [IMPLEMENT LATER] REACH OUT WHERE NECESSARY ON BEHALF OF THE USER THROUGH TEXT, PHONE CALL, OR EMAIL
 
 ### F4: Quote Normalization & Comparison
 - **Description:** The agent receives quotes in various formats (email, PDF, text), extracts the key data, and presents it in a uniform, easy-to-understand format.
@@ -79,6 +79,9 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - Display up to 3 quotes in a clean, side-by-side comparison UI.
     - Red-flag quotes that are significant outliers (either too high or too low).
     - KEEP TRACK OF REVIEWS AND SCORES TO PROVIDE TO USER AT THE END
+### F4.1: Assets Generation for User
+- **Description:** Generates videos (with generated music) and graphics of the side by side comparisons of options (tradeoffs, etc.) to make it easy to understand and in native tongue -> language agnostic (in spanish or korean)
+- **Implementation:** Create these assets and put it in their Google Drive (GSuite integration)
 
 ### F5: Automated Contractor Vetting
 - **Description:** The agent provides crucial trust and safety information for each bidding contractor.
@@ -87,18 +90,14 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - Aggregate review scores from multiple platforms (Google, Yelp, etc.).
     - Generate a summary of recent positive and negative review themes.
 
-### F6: Assets Generation for User
-- **Description:** Generates videos (with generated music) and graphics of the side by side comparisons of options (tradeoffs, etc.) to make it easy to understand and in native tongue -> language agnostic (in spanish or korean)
-- **Implementation:** Create these assets and put it in their Google Drive (GSuite integration)
-
-### F7: One-Tap Booking
+### F6: One-Tap Booking
 - **Description:** Once the user selects a quote, the agent handles the initial scheduling communication.
 - **Requirements:**
     - User can select their preferred quote with a single tap.
     - The agent sends an automated confirmation to the chosen contractor to schedule the appointment.
     - The app displays the confirmed appointment details to the user.
 
-### *F8: AUTOMATED BOOKING
+### *F7: AUTOMATED BOOKING
 - **Description:** Take users gogole calendar or let user provide time windows and dates that would work and then the user books on behalf of the user in their availability and sends an email or some update to indicate it's been scheduled. (INTEGRATE WITH GOOGLE CALENDAR - GSUITE)
 
 

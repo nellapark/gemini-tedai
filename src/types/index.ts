@@ -52,6 +52,19 @@ export interface AnalysisResult {
   recommendedActions: string[];
   additionalInspectionNeeded: boolean;
   
+  // TIMELINE & CONTEXT
+  issueHistory: {
+    whenStarted: string;
+    howItHappened: string;
+    previousAttempts: string[];
+  };
+  userTimeline: {
+    desiredCompletionDate: string;
+    schedulingConstraints: string[];
+  };
+  userConcerns: string[];
+  environmentalFactors: string[];
+  
   // Legacy fields for backward compatibility
   scopeItems?: string[];
 }

@@ -254,7 +254,7 @@ const createMaterialsChecklist = (materials: string[]): string => {
     ctx.fillStyle = '#1f2937';
     ctx.font = 'bold 24px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('📦 Materials & Equipment Required', 350, 40);
+    ctx.fillText('Materials & Equipment Required', 350, 40);
     
     // Draw materials in two columns
     materials.forEach((material, i) => {
@@ -312,7 +312,7 @@ const createSafetyDiagram = (hazards: string[]): string => {
     ctx.fillStyle = '#991b1b';
     ctx.font = 'bold 28px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText('⚠️ SAFETY HAZARDS', 90, 50);
+    ctx.fillText('SAFETY HAZARDS', 90, 50);
     
     // List hazards
     hazards.forEach((hazard, i) => {
@@ -360,6 +360,13 @@ export async function generateScopeOfWorkPDF(
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 15;
 
+  // Helper function to sanitize text - remove non-English characters
+  const sanitizeText = (text: string): string => {
+    if (!text) return '';
+    // Keep only ASCII printable characters, newlines, and tabs
+    return text.replace(/[^\x20-\x7E\n\r\t]/g, '').trim();
+  };
+
   // Helper function to add new page if needed
   const checkPageBreak = (neededSpace: number) => {
     if (yPosition + neededSpace > pageHeight - 20) {
@@ -393,12 +400,12 @@ export async function generateScopeOfWorkPDF(
   doc.setFontSize(24);
   doc.setTextColor(59, 130, 246);
   doc.setFont('helvetica', 'bold');
-  doc.text(result.category, pageWidth / 2, 145, { align: 'center' });
+  doc.text(sanitizeText(result.category), pageWidth / 2, 145, { align: 'center' });
   
   if (result.subcategory) {
     doc.setFontSize(14);
     doc.setTextColor(100, 100, 100);
-    doc.text(result.subcategory, pageWidth / 2, 155, { align: 'center' });
+    doc.text(sanitizeText(result.subcategory), pageWidth / 2, 155, { align: 'center' });
   }
   
   yPosition = 180;
@@ -414,7 +421,7 @@ export async function generateScopeOfWorkPDF(
   doc.setFont('helvetica', 'bold');
   doc.text('SEVERITY', margin + 10, yPosition + 12);
   doc.setFontSize(18);
-  doc.text(result.severity || 'N/A', margin + 10, yPosition + 25);
+  doc.text(sanitizeText(result.severity || 'N/A'), margin + 10, yPosition + 25);
   
   // Urgency box
   const urgencyColor = result.urgency === 'Critical' || result.urgency === 'High' ? [239, 68, 68] : [245, 158, 11];
@@ -423,7 +430,7 @@ export async function generateScopeOfWorkPDF(
   doc.setFontSize(12);
   doc.text('URGENCY', margin + boxWidth + margin + 10, yPosition + 12);
   doc.setFontSize(18);
-  doc.text(result.urgency, margin + boxWidth + margin + 10, yPosition + 25);
+  doc.text(sanitizeText(result.urgency), margin + boxWidth + margin + 10, yPosition + 25);
   
   // Date and footer
   doc.setFontSize(10);
@@ -453,11 +460,11 @@ export async function generateScopeOfWorkPDF(
   doc.setFontSize(14);
   doc.setTextColor(31, 41, 55);
   doc.setFont('helvetica', 'bold');
-  doc.text('📋 PROBLEM SUMMARY', margin + 5, yPosition + 10);
+  doc.text('PROBLEM SUMMARY', margin + 5, yPosition + 10);
   
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  const summaryLines = doc.splitTextToSize(result.problemSummary, pageWidth - 2 * margin - 10);
+  const summaryLines = doc.splitTextToSize(sanitizeText(result.problemSummary), pageWidth - 2 * margin - 10);
   doc.text(summaryLines, margin + 5, yPosition + 22);
   
   // ========== PAGE 3: AFFECTED AREAS ==========
@@ -465,7 +472,8 @@ export async function generateScopeOfWorkPDF(
     doc.addPage();
     yPosition = 20;
     
-    const areasDiagram = createAffectedAreasDiagram(result.affectedAreas);
+    const sanitizedAreas = result.affectedAreas.map(area => sanitizeText(area));
+    const areasDiagram = createAffectedAreasDiagram(sanitizedAreas);
     doc.addImage(areasDiagram, 'PNG', margin, yPosition, pageWidth - 2 * margin, Math.min(100, result.affectedAreas.length * 15 + 80));
   }
   
@@ -474,7 +482,13 @@ export async function generateScopeOfWorkPDF(
     doc.addPage();
     yPosition = 20;
     
-    const taskDiagram = createTaskBreakdownDiagram(result.scopeOfWork.requiredTasks.slice(0, 5));
+    const sanitizedTasks = result.scopeOfWork.requiredTasks.slice(0, 5).map(task => ({
+      ...task,
+      task: sanitizeText(task.task),
+      description: sanitizeText(task.description),
+      priority: sanitizeText(task.priority)
+    }));
+    const taskDiagram = createTaskBreakdownDiagram(sanitizedTasks);
     const diagramHeight = Math.min(pageHeight - 40, result.scopeOfWork.requiredTasks.length * 20 + 50);
     doc.addImage(taskDiagram, 'PNG', margin, yPosition, pageWidth - 2 * margin, diagramHeight);
   }
@@ -484,7 +498,8 @@ export async function generateScopeOfWorkPDF(
     doc.addPage();
     yPosition = 20;
     
-    const materialsDiagram = createMaterialsChecklist(result.scopeOfWork.materialsNeeded);
+    const sanitizedMaterials = result.scopeOfWork.materialsNeeded.map(material => sanitizeText(material));
+    const materialsDiagram = createMaterialsChecklist(sanitizedMaterials);
     const materialsHeight = Math.min(pageHeight - 40, Math.ceil(result.scopeOfWork.materialsNeeded.length / 2) * 12 + 50);
     doc.addImage(materialsDiagram, 'PNG', margin, yPosition, pageWidth - 2 * margin, materialsHeight);
     
@@ -499,10 +514,10 @@ export async function generateScopeOfWorkPDF(
       doc.setFontSize(14);
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.text('⏱️ ESTIMATED DURATION', margin + 10, yPosition + 15);
+      doc.text('ESTIMATED DURATION', margin + 10, yPosition + 15);
       
       doc.setFontSize(20);
-      doc.text(result.scopeOfWork.estimatedDuration, margin + 10, yPosition + 30);
+      doc.text(sanitizeText(result.scopeOfWork.estimatedDuration), margin + 10, yPosition + 30);
     }
   }
   
@@ -511,7 +526,8 @@ export async function generateScopeOfWorkPDF(
     doc.addPage();
     yPosition = 20;
     
-    const safetyDiagram = createSafetyDiagram(result.safetyHazards);
+    const sanitizedHazards = result.safetyHazards.map(hazard => sanitizeText(hazard));
+    const safetyDiagram = createSafetyDiagram(sanitizedHazards);
     const safetyHeight = Math.min(pageHeight - 40, result.safetyHazards.length * 15 + 80);
     doc.addImage(safetyDiagram, 'PNG', margin, yPosition, pageWidth - 2 * margin, safetyHeight);
   }
@@ -525,7 +541,7 @@ export async function generateScopeOfWorkPDF(
     doc.setFontSize(24);
     doc.setTextColor(59, 130, 246);
     doc.setFont('helvetica', 'bold');
-    doc.text('📸 VISUAL DOCUMENTATION', pageWidth / 2, yPosition, { align: 'center' });
+    doc.text('VISUAL DOCUMENTATION', pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 15;
     
     doc.setFontSize(12);
@@ -554,7 +570,8 @@ export async function generateScopeOfWorkPDF(
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(31, 41, 55);
-        const annotationLines = doc.splitTextToSize(image.annotation, pageWidth - 2 * margin - 10);
+        // Sanitize annotation text to remove non-English characters
+        const annotationLines = doc.splitTextToSize(sanitizeText(image.annotation), pageWidth - 2 * margin - 10);
         doc.text(annotationLines.slice(0, 4), margin + 5, yPosition + 8);
         yPosition += 50;
         
@@ -562,6 +579,166 @@ export async function generateScopeOfWorkPDF(
       } catch (err) {
         console.error('Error adding image to PDF:', err);
       }
+    }
+  }
+  
+  // ========== PAGE: ISSUE HISTORY & CONTEXT ==========
+  if (result.issueHistory || result.userTimeline || result.userConcerns || result.environmentalFactors) {
+    doc.addPage();
+    yPosition = 20;
+    
+    // Page Title
+    doc.setFontSize(24);
+    doc.setTextColor(79, 70, 229);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ISSUE CONTEXT & TIMELINE', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 20;
+    
+    // Issue History
+    if (result.issueHistory) {
+      checkPageBreak(60);
+      
+      doc.setFillColor(238, 242, 255);
+      doc.rect(margin, yPosition, pageWidth - 2 * margin, 10, 'F');
+      
+      doc.setFontSize(16);
+      doc.setTextColor(79, 70, 229);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ISSUE HISTORY', margin + 5, yPosition + 7);
+      yPosition += 15;
+      
+      if (result.issueHistory.whenStarted) {
+        doc.setFontSize(11);
+        doc.setTextColor(55, 65, 81);
+        doc.setFont('helvetica', 'bold');
+        doc.text('When It Started:', margin + 5, yPosition);
+        doc.setFont('helvetica', 'normal');
+        const whenLines = doc.splitTextToSize(sanitizeText(result.issueHistory.whenStarted), pageWidth - 2 * margin - 15);
+        doc.text(whenLines, margin + 5, yPosition + 6);
+        yPosition += (whenLines.length * 5) + 8;
+      }
+      
+      if (result.issueHistory.howItHappened) {
+        checkPageBreak(30);
+        doc.setFont('helvetica', 'bold');
+        doc.text('How It Happened:', margin + 5, yPosition);
+        doc.setFont('helvetica', 'normal');
+        const howLines = doc.splitTextToSize(sanitizeText(result.issueHistory.howItHappened), pageWidth - 2 * margin - 15);
+        doc.text(howLines, margin + 5, yPosition + 6);
+        yPosition += (howLines.length * 5) + 8;
+      }
+      
+      if (result.issueHistory.previousAttempts && result.issueHistory.previousAttempts.length > 0) {
+        checkPageBreak(30);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Previous Fix Attempts:', margin + 5, yPosition);
+        yPosition += 6;
+        doc.setFont('helvetica', 'normal');
+        result.issueHistory.previousAttempts.forEach(attempt => {
+          checkPageBreak(15);
+          const attemptLines = doc.splitTextToSize('- ' + sanitizeText(attempt), pageWidth - 2 * margin - 20);
+          doc.text(attemptLines, margin + 10, yPosition);
+          yPosition += (attemptLines.length * 5) + 3;
+        });
+      }
+      
+      yPosition += 10;
+    }
+    
+    // User Timeline
+    if (result.userTimeline) {
+      checkPageBreak(60);
+      
+      doc.setFillColor(207, 250, 254);
+      doc.rect(margin, yPosition, pageWidth - 2 * margin, 10, 'F');
+      
+      doc.setFontSize(16);
+      doc.setTextColor(8, 145, 178);
+      doc.setFont('helvetica', 'bold');
+      doc.text('TIMELINE & SCHEDULING', margin + 5, yPosition + 7);
+      yPosition += 15;
+      
+      if (result.userTimeline.desiredCompletionDate) {
+        doc.setFontSize(11);
+        doc.setTextColor(55, 65, 81);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Desired Completion:', margin + 5, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(14);
+        doc.setTextColor(8, 145, 178);
+        doc.text(sanitizeText(result.userTimeline.desiredCompletionDate), margin + 5, yPosition + 8);
+        yPosition += 20;
+      }
+      
+      if (result.userTimeline.schedulingConstraints && result.userTimeline.schedulingConstraints.length > 0) {
+        checkPageBreak(30);
+        doc.setFontSize(11);
+        doc.setTextColor(55, 65, 81);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Scheduling Constraints:', margin + 5, yPosition);
+        yPosition += 6;
+        doc.setFont('helvetica', 'normal');
+        result.userTimeline.schedulingConstraints.forEach(constraint => {
+          checkPageBreak(15);
+          const constraintLines = doc.splitTextToSize('- ' + sanitizeText(constraint), pageWidth - 2 * margin - 20);
+          doc.text(constraintLines, margin + 10, yPosition);
+          yPosition += (constraintLines.length * 5) + 3;
+        });
+      }
+      
+      yPosition += 10;
+    }
+    
+    // User Concerns
+    if (result.userConcerns && result.userConcerns.length > 0) {
+      checkPageBreak(60);
+      
+      doc.setFillColor(254, 243, 199);
+      doc.rect(margin, yPosition, pageWidth - 2 * margin, 10, 'F');
+      
+      doc.setFontSize(16);
+      doc.setTextColor(217, 119, 6);
+      doc.setFont('helvetica', 'bold');
+      doc.text('USER CONCERNS & PRIORITIES', margin + 5, yPosition + 7);
+      yPosition += 15;
+      
+      doc.setFontSize(11);
+      doc.setTextColor(55, 65, 81);
+      doc.setFont('helvetica', 'normal');
+      result.userConcerns.forEach(concern => {
+        checkPageBreak(15);
+        const concernLines = doc.splitTextToSize('- ' + sanitizeText(concern), pageWidth - 2 * margin - 20);
+        doc.text(concernLines, margin + 10, yPosition);
+        yPosition += (concernLines.length * 5) + 3;
+      });
+      
+      yPosition += 10;
+    }
+    
+    // Environmental Factors
+    if (result.environmentalFactors && result.environmentalFactors.length > 0) {
+      checkPageBreak(60);
+      
+      doc.setFillColor(254, 243, 199);
+      doc.rect(margin, yPosition, pageWidth - 2 * margin, 10, 'F');
+      
+      doc.setFontSize(16);
+      doc.setTextColor(217, 119, 6);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ENVIRONMENTAL & SITUATIONAL FACTORS', margin + 5, yPosition + 7);
+      yPosition += 15;
+      
+      doc.setFontSize(11);
+      doc.setTextColor(55, 65, 81);
+      doc.setFont('helvetica', 'normal');
+      result.environmentalFactors.forEach(factor => {
+        checkPageBreak(15);
+        const factorLines = doc.splitTextToSize('- ' + sanitizeText(factor), pageWidth - 2 * margin - 20);
+        doc.text(factorLines, margin + 10, yPosition);
+        yPosition += (factorLines.length * 5) + 3;
+      });
+      
+      yPosition += 10;
     }
   }
   
@@ -577,7 +754,7 @@ export async function generateScopeOfWorkPDF(
     doc.setFontSize(24);
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.text('💡 IMMEDIATE ACTION REQUIRED', pageWidth / 2, yPosition + 25, { align: 'center' });
+    doc.text('IMMEDIATE ACTION REQUIRED', pageWidth / 2, yPosition + 25, { align: 'center' });
     
     yPosition += 50;
     
@@ -601,7 +778,7 @@ export async function generateScopeOfWorkPDF(
       doc.setFontSize(11);
       doc.setTextColor(31, 41, 55);
       doc.setFont('helvetica', 'normal');
-      const actionLines = doc.splitTextToSize(action, pageWidth - 2 * margin - 40);
+      const actionLines = doc.splitTextToSize(sanitizeText(action), pageWidth - 2 * margin - 40);
       doc.text(actionLines, margin + 30, yPosition + 12);
       
       yPosition += 35;
