@@ -32,3 +32,19 @@ body {
   animation: fadeIn 0.3s ease-in-out;
 }
 
+/* Smooth fade-in and slide-up animation for contractors results */
+@keyframes fadeInSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInSlideUp {
+  animation: fadeInSlideUp 1s ease-out forwards;
+}
+

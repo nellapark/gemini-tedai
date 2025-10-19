@@ -9,6 +9,7 @@ interface AnalysisResultCardProps {
   result: AnalysisResult;
   mediaFiles: MediaFile[];
   zipCode: string;
+  city: string;
   onStartNew: () => void;
   onRequestQuotes: () => void;
 }
@@ -17,6 +18,7 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({
   result,
   mediaFiles,
   zipCode,
+  city,
   onStartNew,
   onRequestQuotes,
 }) => {

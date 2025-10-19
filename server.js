@@ -458,10 +458,10 @@ const quoteSessions = new Map();
 // API endpoint for requesting quotes using computer use
 app.post('/api/request-quotes', async (req, res) => {
   try {
-    const { jobId, zipCode, category, subcategory, problemSummary, scopeOfWork } = req.body;
+    const { jobId, zipCode, city, category, subcategory, problemSummary, scopeOfWork } = req.body;
 
-    if (!jobId || !zipCode) {
-      return res.status(400).json({ error: 'Job ID and zip code are required' });
+    if (!jobId || !zipCode || !city) {
+      return res.status(400).json({ error: 'Job ID, zip code, and city are required' });
     }
 
     // Check if this job is already being processed
@@ -470,12 +470,13 @@ app.post('/api/request-quotes', async (req, res) => {
       return res.json({ success: true, jobId, alreadyRunning: true });
     }
 
-    console.log(`Starting quote search for job ${jobId} in zip code ${zipCode}`);
+    console.log(`Starting quote search for job ${jobId} in ${city}, ${zipCode}`);
 
     // Initialize session storage
     const sessionData = {
       jobId,
       zipCode,
+      city,
       category,
       subcategory,
       problemSummary,
@@ -596,10 +597,10 @@ async function searchContractorsWithComputerUse(sessionData) {
 
 // Search a specific platform using Browserbase + Gemini Computer Use Agent
 async function searchPlatform(platform, sessionData) {
-  const { jobId, zipCode, category, subcategory, problemSummary } = sessionData;
+  const { jobId, zipCode, city, category, subcategory, problemSummary, scopeOfWork } = sessionData;
   const sessionId = `${platform}-${Date.now()}`;
   
-  console.log(`[${jobId}] Starting Computer Use Agent session for ${platform.toUpperCase()}`);
+  console.log(`[${jobId}] Starting Computer Use Agent session for ${platform.toUpperCase()} in ${city}, ${zipCode}`);
   
   // Initialize session state
   const session = {
@@ -619,6 +620,8 @@ async function searchPlatform(platform, sessionData) {
   broadcastToClients(jobId, { type: 'session_update', session });
 
   let stagehand;
+  let originalConsoleLog;
+  let originalConsoleInfo;
 
   try {
     // Initialize Stagehand with Browserbase - following the gemini-browser pattern
@@ -627,6 +630,43 @@ async function searchPlatform(platform, sessionData) {
       currentAction: 'Creating remote browser session...',
     });
     broadcastToClients(jobId, { type: 'session_update', session });
+
+    // Set up console interceptor to capture agent reasoning logs
+    originalConsoleLog = console.log;
+    originalConsoleInfo = console.info;
+    
+    const logInterceptor = (...args) => {
+      const logMessage = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+      
+      // Check if this is an agent reasoning log
+      if (logMessage.includes('Reasoning:')) {
+        const reasoningMatch = logMessage.match(/Reasoning:\s*(.+)/s);
+        if (reasoningMatch) {
+          const reasoning = reasoningMatch[1].trim();
+          // Add to agent activity logs - show more context (300 chars)
+          const displayReasoning = reasoning.length > 300 
+            ? reasoning.substring(0, 300) + '...' 
+            : reasoning;
+          addLog(session, `🤔 Agent Reasoning: ${displayReasoning}`, 'info');
+          broadcastToClients(jobId, { type: 'session_update', session });
+        }
+      }
+      
+      // Also check for other agent actions
+      if (logMessage.includes('Taking screenshot')) {
+        addLog(session, `📸 Agent taking screenshot for verification`, 'info');
+        broadcastToClients(jobId, { type: 'session_update', session });
+      }
+      
+      // Call original console.log
+      originalConsoleLog.apply(console, args);
+    };
+    
+    // Override console methods to capture Stagehand logs
+    console.log = logInterceptor;
+    console.info = logInterceptor;
 
     stagehand = new Stagehand({
       env: 'BROWSERBASE',
@@ -710,61 +750,205 @@ async function searchPlatform(platform, sessionData) {
     addLog(session, `🤖 Initializing Gemini 2.5 Computer Use Agent`, 'info');
     broadcastToClients(jobId, { type: 'session_update', session });
 
+    const platformName = platform === 'taskrabbit' ? 'TaskRabbit' : 'Thumbtack';
+    
+    // Generate smart search queries based on actual problem details
+    const scopeSummary = scopeOfWork?.summary || '';
+    const requiredTasks = scopeOfWork?.requiredTasks?.map(t => t.task).join(', ') || '';
+    
     const agent = stagehand.agent({
       provider: 'google',
       model: 'gemini-2.5-computer-use-preview-10-2025',
       instructions: `You are a helpful assistant that can use a web browser to search for home service contractors.
-      You are currently on ${url}.
+      You are currently on ${url} and you MUST STAY ON THIS WEBSITE.
       
-      Your task:
-      1. Find the search or location input field
-      2. Enter the zip code "${zipCode}"
-      3. Search for "${category}" or "${subcategory}" services
-      4. Wait for results to load
-      5. Extract the top 3-5 contractor listings
+      ⚠️ CRITICAL CONSTRAINTS:
+      - You MUST stay on ${url} at all times
+      - DO NOT navigate to Google.com or any external search engines
+      - DO NOT leave ${platformName}.com under any circumstances
+      - Use ONLY the search functionality available on ${platformName}.com
+      - All searches must be performed using ${platformName}'s built-in search
       
-      For each contractor, extract:
-      - name (string)
-      - rating (number, e.g., 4.8)
-      - reviewCount (number)
-      - price (string, e.g., "$50-100/hr" or "From $75")
-      - description (brief summary of services)
-      - availability (if visible)
+      📋 USER'S ACTUAL PROBLEM CONTEXT:
+      - Problem Summary: "${problemSummary}"
+      - Category: ${category} / ${subcategory}
+      - Scope of Work: ${scopeSummary}
+      - Required Tasks: ${requiredTasks}
       
-      Return the results as a JSON array.
-      Do not ask follow-up questions. Use your best judgment.`,
+      🔍 SMART SEARCH STRATEGY:
+      Use the problem context to create SPECIFIC search queries. Try multiple searches if needed:
+      
+      Example 1: If problem is "hole in drywall" → Try these searches in order:
+        1. "fix hole in wall" or "drywall hole repair"
+        2. "patch drywall hole"
+        3. "wall repair" or "drywall repair"
+        4. If those fail, try generic "${subcategory}"
+      
+      Example 2: If problem is "leaky faucet in kitchen" → Try:
+        1. "fix leaky faucet" or "faucet repair"
+        2. "plumbing faucet leak"
+        3. "kitchen plumbing repair"
+        4. If those fail, try generic "plumber"
+      
+      Example 3: If problem is "broken door handle" → Try:
+        1. "door handle repair" or "fix broken door handle"
+        2. "door hardware repair"
+        3. "handyman door repair"
+        4. If those fail, try generic "handyman"
+      
+      YOUR TASK:
+      1. Analyze the problem context above and formulate 2-3 specific search queries
+      2. Try your first specific search query on ${platformName}.com (e.g., "fix hole in wall")
+      3. If you get good results (contractors that match), proceed to extract data
+      4. If results are poor or empty, try your second search query
+      5. If still no good results, try a more generic search (${subcategory})
+      6. For location/address field, enter "${city}, ${zipCode}" or "${zipCode}" depending on what the field accepts
+      7. Browse through the top 3-5 contractor profiles that MATCH the actual problem
+      8. Click on each relevant contractor profile to view their detailed page (staying on ${platformName}.com)
+      9. Extract comprehensive information including reviews, specialties, and pricing
+      
+      DETAILED EXTRACTION REQUIREMENTS:
+      For EACH contractor, extract the following (click into their ${platformName} profile if needed):
+      
+      BASIC INFO:
+      - name (string): Full name or business name
+      - rating (number): Overall rating (e.g., 4.8)
+      - reviewCount (number): Total number of reviews
+      - profileImage (string): URL to profile picture or business logo
+      - profileUrl (string): Direct link to their ${platformName} profile
+      - description (string): Brief summary of their services
+      
+      PRICING:
+      - price (string): Hourly rate, project rate, or starting price (e.g., "$50-100/hr", "From $75", "$200/project")
+      - priceNeedsFollowUp (boolean): true if no price listed and says "Contact for quote" or similar
+      
+      SPECIALTIES & EXPERIENCE:
+      - specialties (array of strings): List of their specific expertise areas (e.g., ["Drywall Repair", "Painting", "Home Renovation"])
+      - yearsOfExperience (number): Years in business (if visible)
+      - isTopRated (boolean): Whether they have a "Top Pro", "Elite", or similar badge
+      
+      REVIEWS & TESTIMONIALS:
+      - goodReviews (array): 2-3 POSITIVE reviews with:
+        { text: "review text", rating: 5, author: "Customer name", date: "Month Year" }
+      - badReviews (array): 1-2 NEGATIVE/CRITICAL reviews (if any) with same structure
+        Note: Look for reviews with 3 stars or below, or complaints
+      
+      AVAILABILITY:
+      - availability (string): "Available now", "Responds in 2 hours", booking schedule, etc.
+      
+      IMPORTANT RULES:
+      - STAY ON ${url} - do not navigate to any other domain
+      - Use only ${platformName}'s native search and navigation
+      - Click into contractor profiles to see full details and reviews (all on ${platformName}.com)
+      - Read through multiple reviews to find both good AND bad ones
+      - Extract actual review text, not summaries
+      - If information is not available, use null or empty array
+      - Return results as a JSON array of contractor objects
+      - If you cannot find the information on ${platformName}.com, return empty arrays/null values
+      - DO NOT attempt to search elsewhere or leave ${platformName}.com
+      
+      Do not ask follow-up questions. Work entirely within ${platformName}.com to complete this task.`,
       options: {
         apiKey: process.env.GOOGLE_API_KEY,
       },
     });
 
-    console.log(`Executing Computer Use Agent for ${platform}...`);
+    console.log(`[${jobId}] Executing Computer Use Agent for ${platform.toUpperCase()}...`);
     
     updateSession(session, {
-      progress: 50,
-      currentAction: 'AI agent is searching and extracting contractor information...',
+      progress: 40,
+      currentAction: 'Starting AI agent search...',
     });
-    addLog(session, `🔍 Searching for ${category} contractors in zip code ${zipCode}`, 'action');
+    addLog(session, `🔍 Agent task: Find ${category} contractors in ${city}, ${zipCode}`, 'action');
     broadcastToClients(jobId, { type: 'session_update', session });
 
-    // Execute the agent with the instruction
-    const instruction = `Search for ${category} contractors in zip code ${zipCode} and extract their information.`;
+    // Execute the agent with the instruction - include problem context for smarter searching
+    const instruction = `STAY ON ${url} - The user has this specific problem: "${problemSummary}".
     
-    addLog(session, `🎯 Agent executing: entering zip code, searching ${subcategory} services`, 'action');
+    Based on this problem, formulate 2-3 specific search queries that match the actual issue (not just generic "${category}").
+    For example:
+    - If the problem is about a hole in drywall, search for "fix hole in wall" or "drywall hole repair"
+    - If it's a leaky faucet, search for "fix leaky faucet" or "faucet repair"
+    - If it's a broken door, search for "door repair" or "fix broken door"
+    
+    Try your most specific search first on ${platformName}.com in the location: ${city}, ${zipCode}.
+    For the location/address field, enter "${city}, ${zipCode}" or just "${zipCode}" depending on what the field accepts.
+    If the results are poor (no relevant contractors), try a slightly broader search.
+    If still no results, fall back to generic "${subcategory}" search.
+    
+    DO NOT navigate to Google or any external sites. Use only ${platformName}.com's built-in search functionality.
+    Once you find relevant contractors on ${platformName}.com, browse through the top 3-5 listings, click into each profile (staying on ${platformName}.com) to view detailed information, 
+    read their reviews (both positive and negative), check their specialties, pricing, and experience. 
+    Extract comprehensive data for each contractor including good and bad reviews, specialties, images, and pricing details.
+    Work entirely within ${platformName}.com to complete this task.`;
+    
+    // Add detailed phase logs
+    addLog(session, `🎯 Phase 1: Analyzing problem and formulating smart search queries`, 'action');
+    addLog(session, `🔍 Problem: "${problemSummary.substring(0, 60)}${problemSummary.length > 60 ? '...' : ''}"`, 'info');
     broadcastToClients(jobId, { type: 'session_update', session });
     
-    const result = await agent.execute({
+    // Start agent execution with progress tracking
+    const agentStartTime = Date.now();
+    
+    // Create a promise to track agent execution with periodic updates
+    const executionPromise = agent.execute({
       instruction: instruction,
-      maxSteps: 20,
+      maxSteps: 35,
       autoScreenshot: true,
     });
+    
+    // Add periodic status updates during execution
+    const progressInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - agentStartTime) / 1000);
+      const estimatedProgress = Math.min(40 + Math.floor(elapsed / 3), 65);
+      
+      // Add contextual logs based on elapsed time
+      if (elapsed === 5) {
+        addLog(session, `🔎 Phase 2: Trying specific search query on ${platformName}`, 'action');
+        updateSession(session, { progress: estimatedProgress });
+        broadcastToClients(jobId, { type: 'session_update', session });
+      } else if (elapsed === 10) {
+        addLog(session, `📋 Phase 3: Evaluating ${platformName} search results quality`, 'action');
+        updateSession(session, { progress: estimatedProgress });
+        broadcastToClients(jobId, { type: 'session_update', session });
+      } else if (elapsed === 15) {
+        addLog(session, `🔄 Refining search query if needed for better matches`, 'info');
+        updateSession(session, { progress: estimatedProgress });
+        broadcastToClients(jobId, { type: 'session_update', session });
+      } else if (elapsed === 22) {
+        addLog(session, `👤 Phase 4: Found relevant contractors, opening profiles`, 'action');
+        updateSession(session, { progress: estimatedProgress });
+        broadcastToClients(jobId, { type: 'session_update', session });
+      } else if (elapsed === 32) {
+        addLog(session, `⭐ Phase 5: Reading ${platformName} reviews and ratings`, 'action');
+        updateSession(session, { progress: estimatedProgress });
+        broadcastToClients(jobId, { type: 'session_update', session });
+      } else if (elapsed === 42) {
+        addLog(session, `💰 Phase 6: Extracting pricing and specialty data from ${platformName}`, 'action');
+        updateSession(session, { progress: estimatedProgress });
+        broadcastToClients(jobId, { type: 'session_update', session });
+      } else if (elapsed === 52) {
+        addLog(session, `🔄 Phase 7: Comparing additional ${platformName} contractors`, 'action');
+        updateSession(session, { progress: estimatedProgress });
+        broadcastToClients(jobId, { type: 'session_update', session });
+      }
+    }, 1000);
+    
+    // Wait for agent to complete
+    const result = await executionPromise;
+    
+    // Clear the progress interval
+    clearInterval(progressInterval);
     
     updateSession(session, {
       status: 'extracting',
       progress: 70,
       currentAction: 'Processing AI agent results...',
     });
-    addLog(session, `📊 Agent completed ${result.steps || 0} steps, processing results...`, 'info');
+    
+    const actualSteps = result.steps || result.stepsTaken || 'unknown';
+    addLog(session, `✅ Agent completed execution (${actualSteps} steps taken)`, 'success');
+    addLog(session, `📊 Processing extracted data into structured format...`, 'info');
     broadcastToClients(jobId, { type: 'session_update', session });
 
     console.log(`Agent execution result for ${platform}:`, result);
@@ -793,18 +977,47 @@ async function searchPlatform(platform, sessionData) {
 
     console.log(`Extracted ${contractors.length} contractors from ${platform}`);
 
-    // Format contractors for our system
+    // Format contractors for our system with comprehensive data
     const formattedContractors = contractors.map((c, i) => ({
+      // Basic Info
       id: `${platform}-${Date.now()}-${i}`,
       name: c.name || `Contractor ${i + 1}`,
       rating: parseFloat(c.rating) || 4.5,
       reviewCount: parseInt(c.reviewCount || c.review_count) || 0,
-      price: c.price || 'Contact for pricing',
       description: c.description || 'Professional service provider',
-      profileUrl: `https://${platform}.com`,
+      profileUrl: c.profileUrl || `https://www.${platform}.com`,
+      profileImage: c.profileImage || `https://i.pravatar.cc/150?img=${(i + 1) * 7}`,
+      
+      // Pricing
+      price: c.price || null,
+      priceNeedsFollowUp: c.priceNeedsFollowUp !== undefined ? c.priceNeedsFollowUp : !c.price,
+      
+      // Specialties & Experience
+      specialties: Array.isArray(c.specialties) ? c.specialties : [],
+      yearsOfExperience: c.yearsOfExperience ? parseInt(c.yearsOfExperience) : undefined,
+      isTopRated: c.isTopRated || false,
+      
+      // Reviews & Testimonials
+      goodReviews: Array.isArray(c.goodReviews) ? c.goodReviews.map(r => ({
+        text: r.text || r.review || '',
+        rating: r.rating ? parseInt(r.rating) : undefined,
+        author: r.author || r.name || 'Anonymous',
+        date: r.date || undefined
+      })) : [],
+      badReviews: Array.isArray(c.badReviews) ? c.badReviews.map(r => ({
+        text: r.text || r.review || '',
+        rating: r.rating ? parseInt(r.rating) : undefined,
+        author: r.author || r.name || 'Anonymous',
+        date: r.date || undefined
+      })) : [],
+      
+      // Availability & Contact
       availability: c.availability || 'Contact for availability',
+      phoneNumber: c.phoneNumber || c.phone || undefined,
+      email: c.email || undefined,
+      
+      // Platform
       platform,
-      profileImage: `https://i.pravatar.cc/150?img=${(i + 1) * 7}`,
     }));
     
     session.contractors = formattedContractors;
@@ -847,6 +1060,14 @@ async function searchPlatform(platform, sessionData) {
     addLog(session, `❌ Error: ${error.message}`, 'error');
     broadcastToClients(jobId, { type: 'session_update', session });
   } finally {
+    // Restore original console methods
+    if (originalConsoleLog) {
+      console.log = originalConsoleLog;
+    }
+    if (originalConsoleInfo) {
+      console.info = originalConsoleInfo;
+    }
+    
     // Clean up browser session
     if (stagehand) {
       try {

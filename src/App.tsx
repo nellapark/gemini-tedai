@@ -21,6 +21,7 @@ function App() {
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [description, setDescription] = useState('');
   const [zipCode, setZipCode] = useState('');
+  const [city, setCity] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +210,10 @@ function App() {
       setError('Please enter a valid zip code to request quotes');
       return;
     }
+    if (!city || city.trim().length < 2) {
+      setError('Please enter a valid city name to request quotes');
+      return;
+    }
     setShowQuoteDashboard(true);
   };
 
@@ -222,6 +227,7 @@ function App() {
       <QuoteDashboard
         jobId={jobId}
         zipCode={zipCode}
+        city={city}
         analysisResult={analysisResult}
       />
     );
@@ -234,6 +240,7 @@ function App() {
         result={analysisResult}
         mediaFiles={mediaFiles}
         zipCode={zipCode}
+        city={city}
         onStartNew={startNew}
         onRequestQuotes={handleRequestQuotes}
       />
@@ -289,27 +296,44 @@ function App() {
             />
 
             {/* Zip Code Input */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Zip Code
-                <span className="text-red-500 ml-1">*</span>
-              </label>
-              <input
-                type="text"
-                value={zipCode}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 5);
-                  setZipCode(value);
-                }}
-                placeholder="Enter your 5-digit zip code"
-                maxLength={5}
-                disabled={isAnalyzing}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-              <p className="text-xs text-neutral-500 mt-1">
-                Required to find local contractors in your area
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Zip Code
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={zipCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 5);
+                    setZipCode(value);
+                  }}
+                  placeholder="e.g., 32765"
+                  maxLength={5}
+                  disabled={isAnalyzing}
+                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  City
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="e.g., Orlando"
+                  disabled={isAnalyzing}
+                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
             </div>
+            <p className="text-xs text-neutral-500 -mt-2">
+              Required to find local contractors in your area
+            </p>
 
             {/* Text Description */}
             <div>
@@ -338,7 +362,7 @@ function App() {
 
             {error && <ErrorMessage message={error} />}
 
-            <Button variant="secondary" fullWidth type="submit" disabled={isAnalyzing || inputMode === 'none' || zipCode.length < 5} className="py-4">
+            <Button variant="secondary" fullWidth type="submit" disabled={isAnalyzing || inputMode === 'none' || zipCode.length < 5 || city.trim().length < 2} className="py-4">
               {isAnalyzing ? (
                 <>
                   <Spinner />
@@ -352,11 +376,13 @@ function App() {
               )}
             </Button>
 
-            {(inputMode === 'none' || zipCode.length < 5) && (
+            {(inputMode === 'none' || zipCode.length < 5 || city.trim().length < 2) && (
               <p className="text-sm text-neutral-500 text-center -mt-4">
                 {inputMode === 'none' 
                   ? 'Please use live streaming or upload media to continue'
-                  : 'Please enter a valid 5-digit zip code'}
+                  : zipCode.length < 5
+                  ? 'Please enter a valid 5-digit zip code'
+                  : 'Please enter your city name'}
               </p>
             )}
           </form>

@@ -28,12 +28,20 @@ export interface ComputerUseSession {
   endTime?: Date;
 }
 
+export interface ContractorReview {
+  text: string;
+  rating?: number;
+  author?: string;
+  date?: string;
+}
+
 export interface ContractorLead {
   id: string;
   name: string;
   rating: number;
   reviewCount: number;
   price?: string;
+  priceNeedsFollowUp: boolean; // True if price not available, needs to contact contractor
   description: string;
   profileUrl: string;
   phoneNumber?: string;
@@ -41,6 +49,11 @@ export interface ContractorLead {
   availability?: string;
   platform: 'taskrabbit' | 'thumbtack';
   profileImage?: string;
+  specialties: string[]; // Areas of expertise (e.g., "Drywall", "Painting", "Electrical")
+  goodReviews: ContractorReview[]; // Positive reviews/testimonials
+  badReviews: ContractorReview[]; // Negative reviews/testimonials
+  yearsOfExperience?: number;
+  isTopRated?: boolean;
 }
 
 export interface QuoteRequest {

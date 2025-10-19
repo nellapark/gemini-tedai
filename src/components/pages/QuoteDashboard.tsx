@@ -7,22 +7,48 @@ import { Badge } from '../atoms/Badge';
 interface QuoteDashboardProps {
   jobId: string;
   zipCode: string;
+  city: string;
   analysisResult: AnalysisResult;
 }
 
 export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
   jobId,
   zipCode,
+  city,
   analysisResult,
 }) => {
   const [sessions, setSessions] = useState<ComputerUseSession[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [allContractors, setAllContractors] = useState<ContractorLead[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showResults, setShowResults] = useState(false);
+  
+  const contractorsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     startQuoteSearch();
   }, []);
+
+  // Detect when both sessions are completed and trigger fade-in + scroll
+  useEffect(() => {
+    const allSessionsCompleted = sessions.length === 2 && 
+      sessions.every(s => s.status === 'completed' || s.status === 'error');
+    
+    if (allSessionsCompleted && allContractors.length > 0 && !showResults) {
+      // Small delay before showing results for smooth transition
+      setTimeout(() => {
+        setShowResults(true);
+        
+        // Scroll to contractors section after fade-in starts
+        setTimeout(() => {
+          contractorsRef.current?.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }, 300);
+      }, 500);
+    }
+  }, [sessions, allContractors, showResults]);
 
   const startQuoteSearch = async () => {
     setIsSearching(true);
@@ -37,6 +63,7 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
         body: JSON.stringify({
           jobId,
           zipCode,
+          city,
           category: analysisResult.category,
           subcategory: analysisResult.subcategory,
           problemSummary: analysisResult.problemSummary,
@@ -267,12 +294,15 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                             hour12: false 
                           });
                           
+                          const isReasoning = log.message.includes('🤔 Agent Reasoning:');
+                          
                           return (
                             <div 
                               key={index} 
                               className={`p-3 flex items-start space-x-3 hover:bg-neutral-50 transition-colors ${
                                 log.type === 'error' ? 'bg-red-50' : 
                                 log.type === 'success' ? 'bg-green-50' : 
+                                isReasoning ? 'bg-purple-50 border-l-4 border-purple-400' : 
                                 ''
                               }`}
                             >
@@ -280,10 +310,11 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                                 {timeString}
                               </span>
                               <span 
-                                className={`text-sm flex-1 ${
+                                className={`text-sm flex-1 whitespace-pre-wrap ${
                                   log.type === 'error' ? 'text-red-700' : 
                                   log.type === 'success' ? 'text-green-700' : 
                                   log.type === 'action' ? 'text-blue-700 font-medium' : 
+                                  isReasoning ? 'text-purple-700 italic' :
                                   'text-neutral-600'
                                 }`}
                               >
@@ -314,33 +345,82 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                     <p className="text-sm font-semibold text-neutral-700 mb-2">
                       Contractors Found: {session.contractors.length}
                     </p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
                       {session.contractors.map((contractor) => (
                         <div
                           key={contractor.id}
-                          className="flex items-center space-x-3 p-2 bg-green-50 rounded-lg border border-green-200"
+                          className="p-3 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 transition-colors"
                         >
-                          {contractor.profileImage && (
-                            <img
-                              src={contractor.profileImage}
-                              alt={contractor.name}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm text-neutral-800 truncate">
-                              {contractor.name}
-                            </p>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-yellow-500">★</span>
-                              <span className="text-xs text-neutral-600">
-                                {contractor.rating} ({contractor.reviewCount} reviews)
-                              </span>
+                          <div className="flex items-start space-x-3 mb-2">
+                            {contractor.profileImage && (
+                              <img
+                                src={contractor.profileImage}
+                                alt={contractor.name}
+                                className="w-12 h-12 rounded-full object-cover"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <p className="font-semibold text-sm text-neutral-800 truncate">
+                                  {contractor.name}
+                                </p>
+                                {contractor.isTopRated && (
+                                  <span className="text-xs">⭐</span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2 text-xs text-neutral-600">
+                                <span className="text-yellow-500">★</span>
+                                <span>
+                                  {contractor.rating} ({contractor.reviewCount})
+                                </span>
+                                {contractor.yearsOfExperience && (
+                                  <span>• {contractor.yearsOfExperience}y exp</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {contractor.price ? (
+                                <span className="text-sm font-bold text-green-700 block">{contractor.price}</span>
+                              ) : (
+                                <span className="text-xs text-green-600">
+                                  {contractor.priceNeedsFollowUp ? '📞 Quote' : 'Contact'}
+                                </span>
+                              )}
                             </div>
                           </div>
-                          {contractor.price && (
-                            <span className="text-sm font-bold text-green-700">{contractor.price}</span>
+                          
+                          {/* Specialties preview */}
+                          {contractor.specialties && contractor.specialties.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {contractor.specialties.slice(0, 3).map((specialty, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full"
+                                >
+                                  {specialty}
+                                </span>
+                              ))}
+                              {contractor.specialties.length > 3 && (
+                                <span className="text-xs text-neutral-500">
+                                  +{contractor.specialties.length - 3} more
+                                </span>
+                              )}
+                            </div>
                           )}
+                          
+                          {/* Review counts preview */}
+                          <div className="flex items-center space-x-3 mt-2 text-xs text-neutral-600">
+                            {contractor.goodReviews && contractor.goodReviews.length > 0 && (
+                              <span className="text-green-600">
+                                ✓ {contractor.goodReviews.length} positive
+                              </span>
+                            )}
+                            {contractor.badReviews && contractor.badReviews.length > 0 && (
+                              <span className="text-orange-600">
+                                ⚠ {contractor.badReviews.length} critical
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -358,64 +438,195 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
           ))}
         </div>
 
-        {/* All Contractors Summary */}
-        {allContractors.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-neutral-800 mb-6">
-              All Contractors Found ({allContractors.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Divider and Results Header - Fade in before contractors */}
+        {showResults && allContractors.length > 0 && (
+          <>
+            {/* Animated Divider */}
+            <div className="my-8 animate-fadeIn">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t-2 border-neutral-200"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-neutral-50 px-6 py-2 text-sm font-semibold text-neutral-600 rounded-full shadow-sm">
+                    ✨ AI Search Complete - Results Below
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* All Contractors Summary */}
+            <div 
+              ref={contractorsRef}
+              className="bg-white rounded-2xl shadow-lg p-8 animate-fadeInSlideUp border-2 border-green-200"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-bold text-neutral-800 flex items-center">
+                  <span className="mr-3 text-4xl">🎯</span>
+                  All Contractors Found ({allContractors.length})
+                </h2>
+                <div className="flex items-center space-x-2 bg-green-50 px-4 py-2 rounded-full border border-green-200">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-sm text-green-700 font-semibold">Search Complete</span>
+                </div>
+              </div>
+              
+              {/* Subtitle */}
+              <p className="text-neutral-600 mb-6 pb-6 border-b border-neutral-200">
+                Below are the top contractors from TaskRabbit and Thumbtack with detailed reviews, specialties, and pricing information.
+              </p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {allContractors.map((contractor) => (
                 <div
                   key={contractor.id}
-                  className="border-2 border-neutral-200 rounded-xl p-4 hover:border-blue-500 transition-colors cursor-pointer"
+                  className="border-2 border-neutral-200 rounded-xl p-6 hover:border-blue-500 hover:shadow-xl transition-all bg-white"
                 >
-                  <div className="flex items-start space-x-3 mb-3">
+                  {/* Header with Profile */}
+                  <div className="flex items-start space-x-4 mb-4">
                     {contractor.profileImage && (
                       <img
                         src={contractor.profileImage}
                         alt={contractor.name}
-                        className="w-16 h-16 rounded-full object-cover"
+                        className="w-20 h-20 rounded-full object-cover border-2 border-neutral-200"
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-neutral-800 truncate">{contractor.name}</h3>
-                      <div className="flex items-center space-x-1 mt-1">
-                        <span className="text-yellow-500">★</span>
-                        <span className="text-sm font-semibold text-neutral-700">
-                          {contractor.rating}
-                        </span>
-                        <span className="text-xs text-neutral-500">
-                          ({contractor.reviewCount})
-                        </span>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="font-bold text-lg text-neutral-800">{contractor.name}</h3>
+                        {contractor.isTopRated && (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded">
+                            ⭐ TOP RATED
+                          </span>
+                        )}
                       </div>
+                      
+                      <div className="flex items-center space-x-2 mb-2">
+                        <div className="flex items-center space-x-1">
+                          <span className="text-yellow-500 text-lg">★</span>
+                          <span className="text-sm font-bold text-neutral-800">
+                            {contractor.rating}
+                          </span>
+                          <span className="text-xs text-neutral-500">
+                            ({contractor.reviewCount} reviews)
+                          </span>
+                        </div>
+                        {contractor.yearsOfExperience && (
+                          <span className="text-xs text-neutral-600">
+                            • {contractor.yearsOfExperience} yrs exp
+                          </span>
+                        )}
+                      </div>
+
                       <Badge variant="primary" size="sm">
                         {getPlatformName(contractor.platform)}
                       </Badge>
                     </div>
                   </div>
 
-                  <p className="text-sm text-neutral-600 mb-3 line-clamp-2">{contractor.description}</p>
+                  {/* Description */}
+                  <p className="text-sm text-neutral-700 mb-4">{contractor.description}</p>
 
-                  {contractor.price && (
-                    <div className="mb-3">
-                      <span className="text-lg font-bold text-green-700">{contractor.price}</span>
+                  {/* Specialties */}
+                  {contractor.specialties && contractor.specialties.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs font-semibold text-neutral-600 mb-2">Specialties:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {contractor.specialties.map((specialty, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded-full border border-purple-200"
+                          >
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
 
+                  {/* Pricing */}
+                  <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-green-900">Pricing:</span>
+                      {contractor.price ? (
+                        <span className="text-lg font-bold text-green-700">{contractor.price}</span>
+                      ) : (
+                        <span className="text-sm text-green-700">
+                          {contractor.priceNeedsFollowUp ? '📞 Contact for quote' : 'Contact for pricing'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Good Reviews */}
+                  {contractor.goodReviews && contractor.goodReviews.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs font-semibold text-neutral-700 mb-2 flex items-center">
+                        <span className="text-green-600 mr-1">✓</span> Positive Reviews:
+                      </p>
+                      <div className="space-y-2">
+                        {contractor.goodReviews.slice(0, 2).map((review, idx) => (
+                          <div key={idx} className="bg-green-50 p-3 rounded-lg border border-green-100 text-xs">
+                            <p className="text-neutral-700 italic">"{review.text}"</p>
+                            <div className="flex items-center justify-between mt-1 text-neutral-500">
+                              <span>— {review.author}</span>
+                              {review.rating && (
+                                <span className="text-yellow-600">{'★'.repeat(review.rating)}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bad Reviews */}
+                  {contractor.badReviews && contractor.badReviews.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs font-semibold text-neutral-700 mb-2 flex items-center">
+                        <span className="text-orange-600 mr-1">⚠</span> Critical Feedback:
+                      </p>
+                      <div className="space-y-2">
+                        {contractor.badReviews.slice(0, 1).map((review, idx) => (
+                          <div key={idx} className="bg-orange-50 p-3 rounded-lg border border-orange-200 text-xs">
+                            <p className="text-neutral-700 italic">"{review.text}"</p>
+                            <div className="flex items-center justify-between mt-1 text-neutral-500">
+                              <span>— {review.author}</span>
+                              {review.rating && (
+                                <span className="text-orange-600">{'★'.repeat(review.rating)}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Availability */}
                   {contractor.availability && (
-                    <p className="text-xs text-neutral-500 mb-3">
-                      Available: {contractor.availability}
+                    <p className="text-xs text-neutral-600 mb-3 flex items-center">
+                      <span className="mr-2">📅</span>
+                      {contractor.availability}
                     </p>
                   )}
 
-                  <Button variant="primary" fullWidth size="sm">
-                    View Profile
-                  </Button>
+                  {/* Action Button */}
+                  <a
+                    href={contractor.profileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <Button variant="primary" fullWidth size="sm">
+                      View Full Profile →
+                    </Button>
+                  </a>
                 </div>
               ))}
             </div>
           </div>
+          </>
         )}
 
         {/* Loading State */}
