@@ -1,0 +1,129 @@
+[
+  {
+    "name": "Budget Fix Handyman",
+    "rating": 3.8,
+    "reviewCount": 89,
+    "description": "Fast and affordable handyman service for basic repairs. No job too small! We focus on getting you back on track quickly without breaking the bank.",
+    "profileUrl": "https://www.taskrabbit.com/profile/budget-fix",
+    "profileImage": "https://i.pravatar.cc/150?img=32",
+    "price": "$35-50/hr",
+    "priceNeedsFollowUp": false,
+    "specialties": ["Basic Repairs", "Drywall Patching", "Quick Fixes", "Assembly"],
+    "yearsOfExperience": 3,
+    "isTopRated": false,
+    "goodReviews": [
+      {
+        "text": "Great value for the price! He patched my wall hole quickly and it looks decent. Perfect if you're on a budget and need something done fast.",
+        "rating": 4,
+        "author": "Mike T.",
+        "date": "March 2025"
+      },
+      {
+        "text": "Super cheap and got the job done in under an hour. It's not perfect but honestly fine for a rental property.",
+        "rating": 4,
+        "author": "Linda S.",
+        "date": "February 2025"
+      }
+    ],
+    "badReviews": [
+      {
+        "text": "You get what you pay for. The patch is visible if you look closely and the texture doesn't match. He was nice but rushed through it.",
+        "rating": 2,
+        "author": "Rachel M.",
+        "date": "January 2025"
+      },
+      {
+        "text": "Work was sloppy. Had to hire someone else to fix his patch job. Save yourself the hassle and pay more for quality.",
+        "rating": 1,
+        "author": "David K.",
+        "date": "December 2024"
+      }
+    ],
+    "availability": "Available today - same day",
+    "phoneNumber": "(407) 555-0891",
+    "platform": "taskrabbit"
+  },
+  {
+    "name": "Mike Johnson Handyman Services",
+    "rating": 4.6,
+    "reviewCount": 247,
+    "description": "Licensed handyman with 15+ years of experience. Specializing in drywall repair, painting, and general home maintenance. Reliable mid-range service.",
+    "profileUrl": "https://www.taskrabbit.com/profile/mike-johnson",
+    "profileImage": "https://i.pravatar.cc/150?img=12",
+    "price": "$65-80/hr",
+    "priceNeedsFollowUp": false,
+    "specialties": ["Drywall Repair", "Painting", "Door Installation", "Furniture Assembly", "Home Maintenance"],
+    "yearsOfExperience": 15,
+    "isTopRated": true,
+    "goodReviews": [
+      {
+        "text": "Mike did a solid job on my drywall repair. Professional and reasonably priced. The work looks good and he was on time.",
+        "rating": 4,
+        "author": "Sarah M.",
+        "date": "March 2025"
+      },
+      {
+        "text": "Good work overall. Fixed multiple holes in my walls and they blend in well. Fair pricing for the quality.",
+        "rating": 4,
+        "author": "David R.",
+        "date": "February 2025"
+      }
+    ],
+    "badReviews": [
+      {
+        "text": "Work was fine but nothing special. He got the job done but I expected more attention to detail for the price. Had to point out a few spots that needed touch-ups.",
+        "rating": 3,
+        "author": "Jennifer K.",
+        "date": "January 2025"
+      }
+    ],
+    "availability": "Available tomorrow",
+    "phoneNumber": "(407) 555-0123",
+    "platform": "taskrabbit"
+  },
+  {
+    "name": "Elite Drywall Masters",
+    "rating": 4.9,
+    "reviewCount": 312,
+    "description": "Premium drywall repair specialists. Master craftsmen with 20+ years experience. We deliver perfection - insured, bonded, and fully licensed. Your walls deserve the best.",
+    "profileUrl": "https://www.taskrabbit.com/profile/elite-drywall",
+    "profileImage": "https://i.pravatar.cc/150?img=68",
+    "price": "$120-150/hr",
+    "priceNeedsFollowUp": false,
+    "specialties": ["Master Drywall Repair", "Custom Texture Matching", "Venetian Plaster", "High-End Finishing", "Architectural Restoration"],
+    "yearsOfExperience": 22,
+    "isTopRated": true,
+    "goodReviews": [
+      {
+        "text": "Worth every penny! They repaired damage from a pipe leak and you absolutely cannot tell anything was ever wrong. The texture matching is impeccable. True artisans!",
+        "rating": 5,
+        "author": "Catherine B.",
+        "date": "March 2025"
+      },
+      {
+        "text": "These guys are perfectionists in the best way. Spent hours getting the texture just right. Expensive but the quality is museum-level. My designer was blown away!",
+        "rating": 5,
+        "author": "Jonathan W.",
+        "date": "February 2025"
+      },
+      {
+        "text": "I've used many contractors over the years and these are the best I've ever seen. They treat your home like it's their own. Flawless work, professional, and meticulous.",
+        "rating": 5,
+        "author": "Elizabeth P.",
+        "date": "January 2025"
+      }
+    ],
+    "badReviews": [
+      {
+        "text": "The work is beautiful, I'll admit. But wow, the price! They quoted me $800 for a repair that other people quoted $200 for. Quality is there but not for everyone's budget.",
+        "rating": 3,
+        "author": "Tom S.",
+        "date": "December 2024"
+      }
+    ],
+    "availability": "Available next week (booked in advance)",
+    "phoneNumber": "(407) 555-0267",
+    "platform": "taskrabbit"
+  }
+]
+

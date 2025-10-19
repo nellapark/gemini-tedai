@@ -22,6 +22,7 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
   const [allContractors, setAllContractors] = useState<ContractorLead[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   
   const contractorsRef = useRef<HTMLDivElement>(null);
 
@@ -127,6 +128,100 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
     }
   };
 
+  const loadDemoData = async () => {
+    console.log('Loading demo data...');
+    setIsDemoMode(true);
+    setIsSearching(true);
+    setError(null);
+
+    try {
+      // Load TaskRabbit contractors
+      const taskrabbitResponse = await fetch('/dummy-contractor-data/taskrabbit-contractors.json');
+      const taskrabbitContractors = await taskrabbitResponse.json();
+
+      // Load Thumbtack contractors
+      const thumbtackResponse = await fetch('/dummy-contractor-data/thumbtack-contractors.json');
+      const thumbtackContractors = await thumbtackResponse.json();
+
+      // Add unique IDs if not present
+      const formattedTaskRabbit = taskrabbitContractors.map((c: any, i: number) => ({
+        ...c,
+        id: c.id || `taskrabbit-demo-${i}`,
+      }));
+
+      const formattedThumbtack = thumbtackContractors.map((c: any, i: number) => ({
+        ...c,
+        id: c.id || `thumbtack-demo-${i}`,
+      }));
+
+      // Combine all contractors
+      const allDemoContractors = [...formattedTaskRabbit, ...formattedThumbtack];
+      
+      console.log('Demo data loaded:', allDemoContractors.length, 'contractors');
+      
+      setAllContractors(allDemoContractors);
+      setShowResults(true);
+      
+      // Small delay to show transition
+      setTimeout(() => {
+        setIsSearching(false);
+      }, 300);
+
+      // Simulate completed sessions
+      setSessions([
+        {
+          id: 'taskrabbit-demo',
+          platform: 'taskrabbit',
+          status: 'completed',
+          progress: 100,
+          currentAction: 'Demo data loaded',
+          liveViewUrl: null,
+          browserbaseSessionID: null,
+          logs: [
+            {
+              timestamp: new Date(),
+              message: '✅ Loaded demo TaskRabbit contractors',
+              type: 'success',
+            },
+          ],
+          error: null,
+          startTime: new Date(),
+          endTime: new Date(),
+          contractors: formattedTaskRabbit,
+        },
+        {
+          id: 'thumbtack-demo',
+          platform: 'thumbtack',
+          status: 'completed',
+          progress: 100,
+          currentAction: 'Demo data loaded',
+          liveViewUrl: null,
+          browserbaseSessionID: null,
+          logs: [
+            {
+              timestamp: new Date(),
+              message: '✅ Loaded demo Thumbtack contractors',
+              type: 'success',
+            },
+          ],
+          error: null,
+          startTime: new Date(),
+          endTime: new Date(),
+          contractors: formattedThumbtack,
+        },
+      ]);
+
+      // Scroll to results after a short delay
+      setTimeout(() => {
+        contractorsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 500);
+    } catch (error) {
+      console.error('Error loading demo data:', error);
+      setError('Failed to load demo data');
+      setIsSearching(false);
+    }
+  };
+
   const getPlatformName = (platform: string) => {
     return platform === 'taskrabbit' ? 'TaskRabbit' : 'Thumbtack';
   };
@@ -140,18 +235,30 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
             <div>
               <div className="flex items-center space-x-3 mb-2">
                 <h1 className="text-3xl font-bold text-neutral-800">Finding Contractors</h1>
-                <div className="flex items-center space-x-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  </svg>
-                  <span>Google Computer Use</span>
-                </div>
+                {!isDemoMode ? (
+                  <div className="flex items-center space-x-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <span>Google Computer Use</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">
+                    <span>🎭 Demo Mode</span>
+                  </div>
+                )}
               </div>
               <p className="text-neutral-600">
-                Watching AI browse {sessions.length} platforms live • Zip: {zipCode}
+                {isDemoMode 
+                  ? `Viewing ${sessions.length} demo contractor results • Zip: ${zipCode}`
+                  : `Watching AI browse ${sessions.length} platforms live • Zip: ${zipCode}`
+                }
               </p>
               <p className="text-sm text-neutral-500 mt-1">
-                Real-time browser automation powered by Gemini 2.5 Computer Use
+                {isDemoMode 
+                  ? 'Showing sample contractor data for demonstration purposes'
+                  : 'Real-time browser automation powered by Gemini 2.5 Computer Use'
+                }
               </p>
             </div>
             {isSearching && (
@@ -647,6 +754,17 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
           <Button variant="secondary" onClick={() => window.history.back()}>
             ← Back to Analysis
           </Button>
+          {!isDemoMode && (
+            <Button 
+              variant="primary" 
+              onClick={loadDemoData}
+            >
+              🎭 Demo Fallback
+            </Button>
+          )}
+          {isDemoMode && (
+            <Badge variant="success">Demo Mode Active</Badge>
+          )}
           {!isSearching && allContractors.length > 0 && (
             <Button variant="success">Continue to Quote Comparison →</Button>
           )}

@@ -1,0 +1,131 @@
+[
+  {
+    "name": "QuickFix Handyman Services",
+    "rating": 3.9,
+    "reviewCount": 176,
+    "description": "Fast and budget-friendly handyman service. Same-day availability! We get the job done quick so you can move on with your day. Best rates in Orlando!",
+    "profileUrl": "https://www.thumbtack.com/profile/quickfix-handyman",
+    "profileImage": "https://production-next-images-cdn.thumbtack.com/i/490121494148259846/width/320/aspect/1-1.jpeg",
+    "price": "$40-55/hr",
+    "priceNeedsFollowUp": false,
+    "specialties": ["Quick Repairs", "Drywall Patching", "Basic Maintenance", "Assembly"],
+    "yearsOfExperience": 4,
+    "isTopRated": false,
+    "goodReviews": [
+      {
+        "text": "Came out the same day and fixed my wall hole for cheap. It's not perfect but works for me. Good if you need something done fast and don't want to spend much.",
+        "rating": 4,
+        "author": "Daniel K.",
+        "date": "March 2025"
+      },
+      {
+        "text": "Fast service and very affordable. The repair is visible up close but from a few feet away it looks fine. Great budget option!",
+        "rating": 4,
+        "author": "Nicole S.",
+        "date": "February 2025"
+      }
+    ],
+    "badReviews": [
+      {
+        "text": "Super rushed job. The patch is lumpy and doesn't match the wall texture at all. Cheap for a reason I guess.",
+        "rating": 2,
+        "author": "Rachel A.",
+        "date": "January 2025"
+      },
+      {
+        "text": "He was in and out in 20 minutes. The hole is covered but the paint doesn't match and you can clearly see where the repair is. Not happy.",
+        "rating": 2,
+        "author": "Steven L.",
+        "date": "December 2024"
+      }
+    ],
+    "availability": "Same-day service available",
+    "phoneNumber": "(407) 555-0723",
+    "platform": "thumbtack"
+  },
+  {
+    "name": "Orlando Home Repair Pros",
+    "rating": 4.7,
+    "reviewCount": 289,
+    "description": "Reliable handyman service serving Orlando for 12+ years. We specialize in drywall, painting, and general repairs. Licensed, insured, and fairly priced.",
+    "profileUrl": "https://www.thumbtack.com/profile/orlando-home-repair",
+    "profileImage": "https://i.pravatar.cc/150?img=52",
+    "price": "$70-90/hr",
+    "priceNeedsFollowUp": false,
+    "specialties": ["Drywall Repair", "Wall Patching", "Painting", "Carpentry", "Home Repairs"],
+    "yearsOfExperience": 12,
+    "isTopRated": true,
+    "goodReviews": [
+      {
+        "text": "Solid work at a fair price. They repaired my drywall damage and it blends in well. Professional crew and they cleaned up nicely.",
+        "rating": 4,
+        "author": "Michelle D.",
+        "date": "March 2025"
+      },
+      {
+        "text": "Good experience overall. Fixed water-damaged drywall in my bathroom. The repair looks good and pricing was reasonable. Would hire again.",
+        "rating": 4,
+        "author": "Chris N.",
+        "date": "February 2025"
+      }
+    ],
+    "badReviews": [
+      {
+        "text": "They did an okay job but were 2 days late starting. The quality is fine but communication needs improvement. Expected better for the price.",
+        "rating": 3,
+        "author": "Brian S.",
+        "date": "January 2025"
+      }
+    ],
+    "availability": "Available this week",
+    "phoneNumber": "(407) 555-0345",
+    "email": "info@orlandohomerepairpros.com",
+    "platform": "thumbtack"
+  },
+  {
+    "name": "Prestige Wall Artisans",
+    "rating": 4.95,
+    "reviewCount": 428,
+    "description": "Luxury drywall and plaster specialists. Award-winning craftsmen serving high-end residential and commercial clients. Museum-quality finishes. We don't just repair walls, we restore them to perfection.",
+    "profileUrl": "https://www.thumbtack.com/profile/prestige-wall-artisans",
+    "profileImage": "https://i.pravatar.cc/150?img=47",
+    "price": "$135-180/hr",
+    "priceNeedsFollowUp": false,
+    "specialties": ["Master Plastering", "Historic Restoration", "Custom Texture Design", "Venetian Plaster", "Architectural Millwork"],
+    "yearsOfExperience": 25,
+    "isTopRated": true,
+    "goodReviews": [
+      {
+        "text": "Absolutely phenomenal! They repaired ceiling damage in our 1920s home and matched the original plaster work perfectly. It's like magic - you cannot tell there was ever any damage. Expensive but worth it!",
+        "rating": 5,
+        "author": "Emily R.",
+        "date": "March 2025"
+      },
+      {
+        "text": "These are true master craftsmen. Fixed extensive wall damage in our historic Victorian home. The attention to detail is extraordinary. Our architect was amazed at the quality!",
+        "rating": 5,
+        "author": "Richard B.",
+        "date": "February 2025"
+      },
+      {
+        "text": "If you want perfection, hire these people. Yes they're expensive, but the artistry is unmatched. They spent 3 days on what I thought was a simple patch job. The result is invisible and beautiful.",
+        "rating": 5,
+        "author": "Alexandra M.",
+        "date": "January 2025"
+      }
+    ],
+    "badReviews": [
+      {
+        "text": "The work is absolutely beautiful, I can't deny that. But $2,400 for repairing two small holes? That's more than my monthly mortgage. Only for people with unlimited budgets.",
+        "rating": 3,
+        "author": "Karen W.",
+        "date": "November 2024"
+      }
+    ],
+    "availability": "Booking 3-4 weeks out",
+    "phoneNumber": "(407) 555-0412",
+    "email": "contact@prestigewallartisans.com",
+    "platform": "thumbtack"
+  }
+]
+
