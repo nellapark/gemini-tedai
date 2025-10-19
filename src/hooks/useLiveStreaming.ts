@@ -25,6 +25,7 @@ export const useLiveStreaming = (
   const playbackAudioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioBuffer[]>([]);
   const isPlayingRef = useRef<boolean>(false);
+  const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const speechRecognitionRef = useRef<any>(null);
   const currentInterimIdRef = useRef<string | null>(null);
   const currentSpeakerRef = useRef<'user' | 'ai'>('user');
@@ -353,8 +354,12 @@ Remember: You're helping them document and understand their repair issue through
         source.buffer = audioBuffer;
         source.connect(audioContext.destination);
         
+        // Store reference to current audio source so we can stop it if needed
+        currentAudioSourceRef.current = source;
+        
         source.onended = () => {
           console.log('🔇 Audio chunk finished, checking for more...');
+          currentAudioSourceRef.current = null;
           playNextAudioChunk();
         };
         
@@ -365,6 +370,7 @@ Remember: You're helping them document and understand their repair issue through
           console.error('❌ Error starting audio playback:', err);
           isPlayingRef.current = false;
           isGeminiSpeakingRef.current = false;
+          currentAudioSourceRef.current = null;
         }
       };
 
@@ -717,6 +723,21 @@ Remember: You're helping them document and understand their repair issue through
     }
     isGeminiSpeakingRef.current = false;
 
+    // Stop Gemini audio immediately
+    if (currentAudioSourceRef.current) {
+      try {
+        currentAudioSourceRef.current.stop();
+        currentAudioSourceRef.current = null;
+        console.log('🔇 Stopped Gemini audio immediately');
+      } catch (err) {
+        console.error('Error stopping audio:', err);
+      }
+    }
+    
+    // Clear audio queue and reset playback state
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+
     // Reset speaker tracking
     currentInterimIdRef.current = null;
     currentSpeakerRef.current = 'user';
@@ -802,6 +823,21 @@ Remember: You're helping them document and understand their repair issue through
     }
     isGeminiSpeakingRef.current = false;
 
+    // Stop Gemini audio immediately
+    if (currentAudioSourceRef.current) {
+      try {
+        currentAudioSourceRef.current.stop();
+        currentAudioSourceRef.current = null;
+        console.log('🔇 Stopped Gemini audio immediately');
+      } catch (err) {
+        console.error('Error stopping audio:', err);
+      }
+    }
+    
+    // Clear audio queue and reset playback state
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+
     // Reset speaker tracking
     currentInterimIdRef.current = null;
     currentSpeakerRef.current = 'user';
@@ -831,10 +867,6 @@ Remember: You're helping them document and understand their repair issue through
       playbackAudioContextRef.current.close();
       playbackAudioContextRef.current = null;
     }
-
-    // Clear audio queue
-    audioQueueRef.current = [];
-    isPlayingRef.current = false;
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
