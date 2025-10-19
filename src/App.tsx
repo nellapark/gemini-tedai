@@ -47,16 +47,11 @@ function App() {
           { type: 'video/webm' }
         );
 
-        // Create a transcript summary for annotation
-        const transcriptText = session.transcript.length > 0
-          ? `\n\nTranscript:\n${session.transcript.map(t => `${t.speaker === 'user' ? 'You' : 'Gemini AI'}: ${t.text}`).join('\n')}`
-          : '';
-
         return {
           file: videoFile,
           type: 'video' as const,
           preview: session.videoUrl!,
-          annotation: `Live stream session from ${session.timestamp.toLocaleString()}\nDuration: ${Math.floor(session.duration / 60)}:${Math.floor(session.duration % 60).toString().padStart(2, '0')}${transcriptText}`,
+          annotation: `Live stream session from ${session.timestamp.toLocaleString()}\nDuration: ${Math.floor(session.duration / 60)}:${Math.floor(session.duration % 60).toString().padStart(2, '0')}`,
         };
       });
 
