@@ -179,7 +179,7 @@ function App() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-neutral-800 mb-2">QuoteScout</h1>
-          <p className="text-lg text-neutral-600">Your AI-Powered Home Service Agent</p>
+          <p className="text-lg text-neutral-600">Your AI-Powered Home Service Finder Agent</p>
         </div>
 
         {/* Main Card */}
