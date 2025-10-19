@@ -83,7 +83,7 @@ To become the most trusted and efficient way for homeowners to manage any home r
 - **Description:** Generates videos (with generated music) and graphics of the side by side comparisons of options (tradeoffs, etc.) (nano banana: include images of the contractors but wii-ified) to make it easy to understand and in native tongue -> language agnostic (in spanish or korean)
 - **Implementation:** Create these assets and put it in their Google Drive (GSuite integration)
 
-### F5: Automated Contractor Vetting (IMPLEMENT LATER)
+### (IMPLEMENT LATER) F5: Automated Contractor Vetting
 - **Description:** The agent provides crucial trust and safety information for each bidding contractor.
 - **Requirements:**
     - Automatically check for valid state/local licenses.
@@ -97,7 +97,7 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - The agent sends an automated confirmation to the chosen contractor to schedule the appointment.
     - The app displays the confirmed appointment details to the user.
 
-### *F7: AUTOMATED BOOKING
+### (IMPLEMENT LATER) *F7: AUTOMATED BOOKING
 - **Description:** Take users gogole calendar or let user provide time windows and dates that would work and then the user books on behalf of the user in their availability and sends an email or some update to indicate it's been scheduled. (INTEGRATE WITH GOOGLE CALENDAR - GSUITE)
 
 

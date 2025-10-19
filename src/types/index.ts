@@ -13,6 +13,8 @@ export interface ComputerUseSession {
   progress: number;
   currentAction: string;
   screenshot?: string;
+  liveViewUrl?: string;
+  browserbaseSessionID?: string;
   contractors: ContractorLead[];
   error?: string;
   startTime: Date;

@@ -53,8 +53,10 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
 
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        console.log('SSE message received:', data);
 
         if (data.type === 'session_update') {
+          console.log('Session update:', data.session.platform, 'liveViewUrl:', data.session.liveViewUrl);
           setSessions((prev) => {
             const existing = prev.find((s) => s.id === data.session.id);
             if (existing) {
@@ -122,7 +124,7 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                 Watching AI browse {sessions.length} platforms live • Zip: {zipCode}
               </p>
               <p className="text-sm text-neutral-500 mt-1">
-                Real-time browser automation powered by Gemini 2.0
+                Real-time browser automation powered by Gemini 2.5 Computer Use
               </p>
             </div>
             {isSearching && (
@@ -179,26 +181,26 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
 
               {/* Live Browser Session Preview */}
               <div className="relative h-96 bg-neutral-900 overflow-hidden">
-                {session.screenshot ? (
-                  <>
-                    {/* Screenshot with animation on update */}
-                    <img
-                      key={session.screenshot}
-                      src={session.screenshot}
-                      alt="Live computer use session"
-                      className="w-full h-full object-contain animate-fadeIn"
-                    />
+                  {session.liveViewUrl ? (
+                    <>
+                      {/* Browserbase Live View iframe */}
+                      <iframe
+                        src={session.liveViewUrl}
+                        className="w-full h-full border-0"
+                        allow="camera; microphone; display-capture"
+                        title={`Live session: ${session.platform}`}
+                      />
                     
                     {/* Live indicator badge */}
                     {session.status !== 'completed' && session.status !== 'error' && (
-                      <div className="absolute top-3 left-3 flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+                      <div className="absolute top-3 left-3 flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold z-10">
                         <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                         <span>LIVE</span>
                       </div>
                     )}
                     
                     {/* Current action overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-6">
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-6 pointer-events-none z-10">
                       <div className="flex items-start space-x-3">
                         <div className="flex-shrink-0 mt-1">
                           {session.status === 'navigating' && (
@@ -236,7 +238,7 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                     </div>
                   </>
                 ) : (
-                  /* Loading state before first screenshot */
+                  /* Loading state before live view is available */
                   <div className="w-full h-full flex flex-col items-center justify-center text-white">
                     <svg className="w-16 h-16 mb-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -244,6 +246,12 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                     </svg>
                     <p className="text-sm font-medium text-gray-400">Initializing browser session...</p>
                     <p className="text-xs text-gray-500 mt-2">Google Computer Use is starting up</p>
+                    <p className="text-xs text-gray-600 mt-2">
+                      Status: {session.status} | Session ID: {session.browserbaseSessionID || 'pending'}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Waiting for live view URL...
+                    </p>
                   </div>
                 )}
               </div>

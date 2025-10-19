@@ -19,6 +19,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@browserbasehq/sdk": "^2.6.0",
     "@browserbasehq/stagehand": "^2.5.2",
     "@google/generative-ai": "^0.21.0",
     "cors": "^2.8.5",

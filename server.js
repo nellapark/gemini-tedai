@@ -3,6 +3,7 @@ import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Browserbase } from '@browserbasehq/sdk';
 import { Stagehand } from '@browserbasehq/stagehand';
 import fs from 'fs/promises';
 import path from 'path';
@@ -29,6 +30,11 @@ const upload = multer({
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+// Initialize Browserbase client
+const browserbase = new Browserbase({
+  apiKey: process.env.BROWSERBASE_API_KEY || '',
+});
 
 // Helper function to convert file to base64 and prepare for Gemini
 async function fileToGenerativePart(filePath, mimeType) {
@@ -637,19 +643,45 @@ async function searchPlatform(platform, sessionData) {
     });
 
     await stagehand.init();
+    const sessionID = stagehand.browserbaseSessionID;
     console.log(`Stagehand initialized for ${platform}`);
-    console.log(`Browserbase session ID: ${stagehand.browserbaseSessionID}`);
+    console.log(`Browserbase session ID: ${sessionID}`);
 
     // Get the page
     const page = stagehand.page;
     
-    // Update status
+      // Get debug URL from Browserbase for live viewing
+      let liveViewUrl = null;
+      try {
+        // Use .debug() method to get the live view URLs (not .retrieve())
+        const debugUrls = await browserbase.sessions.debug(sessionID);
+        console.log(`[${jobId}] Debug URLs for ${platform}:`, JSON.stringify(debugUrls, null, 2));
+        
+        // Use debuggerFullscreenUrl for iframe embedding
+        if (debugUrls.debuggerFullscreenUrl) {
+          liveViewUrl = debugUrls.debuggerFullscreenUrl;
+          console.log(`[${jobId}] ✓ Using debuggerFullscreenUrl: ${liveViewUrl}`);
+        } else if (debugUrls.debuggerUrl) {
+          liveViewUrl = debugUrls.debuggerUrl;
+          console.log(`[${jobId}] ✓ Using debuggerUrl: ${liveViewUrl}`);
+        } else {
+          console.error(`[${jobId}] ✗ No debug URLs available in response`);
+        }
+      } catch (err) {
+        console.error(`[${jobId}] ✗ Could not get debug URLs: ${err.message}`);
+      }
+    
+    // Update status with live view URL
     updateSession(session, {
       status: 'navigating',
       progress: 15,
       currentAction: `Opening ${platform === 'taskrabbit' ? 'TaskRabbit.com' : 'Thumbtack.com'}...`,
+      liveViewUrl,
+      browserbaseSessionID: sessionID,
     });
     broadcastToClients(jobId, { type: 'session_update', session });
+    
+    console.log(`[${jobId}] Broadcasting session update with liveViewUrl for ${platform}`);
 
     // Step 1: Navigate to the website
     const url = platform === 'taskrabbit' 
@@ -657,14 +689,10 @@ async function searchPlatform(platform, sessionData) {
       : 'https://www.thumbtack.com';
     
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForTimeout(2000);
     
-    // Capture screenshot
-    let screenshot = await capturePageScreenshot(page);
     updateSession(session, {
       progress: 25,
-      currentAction: 'Website loaded successfully',
-      screenshot,
+      currentAction: 'Website loaded, AI agent starting...',
     });
     broadcastToClients(jobId, { type: 'session_update', session });
 
@@ -720,15 +748,11 @@ async function searchPlatform(platform, sessionData) {
       maxSteps: 20,
       autoScreenshot: true,
     });
-
-    // Capture final screenshot
-    screenshot = await capturePageScreenshot(page);
     
     updateSession(session, {
       status: 'extracting',
       progress: 70,
       currentAction: 'Processing AI agent results...',
-      screenshot,
     });
     broadcastToClients(jobId, { type: 'session_update', session });
 
@@ -778,16 +802,12 @@ async function searchPlatform(platform, sessionData) {
       platform 
     });
     broadcastToClients(jobId, { type: 'session_update', session });
-
-    // Final screenshot
-    screenshot = await capturePageScreenshot(page);
     
     // Complete session
     updateSession(session, {
       status: 'completed',
       progress: 100,
       currentAction: `Search complete! Found ${formattedContractors.length} contractors`,
-      screenshot,
       endTime: new Date(),
     });
     
@@ -806,7 +826,7 @@ async function searchPlatform(platform, sessionData) {
     });
     broadcastToClients(jobId, { type: 'session_update', session });
   } finally {
-    // Clean up
+    // Clean up browser session
     if (stagehand) {
       try {
         await stagehand.close();
@@ -815,21 +835,6 @@ async function searchPlatform(platform, sessionData) {
         console.error(`[${jobId}] Error closing Stagehand for ${platform}:`, e);
       }
     }
-  }
-}
-
-// Helper function to capture page screenshot
-async function capturePageScreenshot(page) {
-  try {
-    const screenshotBuffer = await page.screenshot({
-      type: 'jpeg',
-      quality: 80,
-      fullPage: false,
-    });
-    return `data:image/jpeg;base64,${screenshotBuffer.toString('base64')}`;
-  } catch (error) {
-    console.error('Error capturing screenshot:', error);
-    return null;
   }
 }
 
