@@ -25,6 +25,10 @@ export const useLiveStreaming = (
   const playbackAudioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioBuffer[]>([]);
   const isPlayingRef = useRef<boolean>(false);
+  const speechRecognitionRef = useRef<any>(null);
+  const currentInterimIdRef = useRef<string | null>(null);
+  const isGeminiSpeakingRef = useRef<boolean>(false);
+  const geminiStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const openLiveModal = async () => {
     try {
@@ -83,40 +87,43 @@ export const useLiveStreaming = (
       videoChunksRef.current = [];
 
       // Setup WebSocket handlers
-      ws.onopen = () => {
-        console.log('✅ WebSocket connected to Gemini Live API');
-        
-        // Send initial setup message for Gemini 2.0 Flash Experimental (supports Live API)
-        const setupMessage = {
-          setup: {
-            model: 'models/gemini-2.0-flash-exp',
-            generation_config: {
-              response_modalities: 'audio',
-              speech_config: {
-                voice_config: {
-                  prebuilt_voice_config: {
-                    voice_name: 'Puck'
+        ws.onopen = () => {
+          console.log('✅ WebSocket connected to Gemini Live API');
+          
+          // Send initial setup message for Gemini 2.0 Flash Experimental (supports Live API)
+          const setupMessage = {
+            setup: {
+              model: 'models/gemini-2.0-flash-exp',
+              generation_config: {
+                response_modalities: ['AUDIO'], // Gemini 2.0 only supports AUDIO in live mode
+                speech_config: {
+                  voice_config: {
+                    prebuilt_voice_config: {
+                      voice_name: 'Puck'
+                    }
                   }
-                }
+                },
+                temperature: 0.7,
               },
-              temperature: 0.7,
-            },
-            system_instruction: {
-              parts: [{
-                text: 'You are an AI assistant helping users with home repair issues. When they show you their problem via video and describe it with audio, provide helpful real-time feedback. Ask clarifying questions and help them understand what needs to be fixed. Be conversational, helpful, and responsive. Keep responses brief and natural. Always acknowledge what you see and hear.'
-              }]
+              system_instruction: {
+                parts: [{
+                  text: 'You are an AI assistant helping users with home repair issues. When they show you their problem via video and describe it with audio, provide helpful real-time feedback. Ask clarifying questions and help them understand what needs to be fixed. Be conversational, helpful, and responsive. Keep responses brief and natural. Always acknowledge what you see and hear.'
+                }]
+              }
             }
-          }
+          };
+          
+          console.log('📤 Sending setup message:', JSON.stringify(setupMessage, null, 2));
+          ws.send(JSON.stringify(setupMessage));
+          
+          // Start Web Speech API for transcribing USER's voice
+          startSpeechRecognition();
+          
+          // Start streaming audio after a short delay to ensure setup is complete
+          setTimeout(() => {
+            startAudioStreaming(ws);
+          }, 500);
         };
-        
-        console.log('📤 Sending setup message:', JSON.stringify(setupMessage, null, 2));
-        ws.send(JSON.stringify(setupMessage));
-        
-        // Start streaming audio after a short delay to ensure setup is complete
-        setTimeout(() => {
-          startAudioStreaming(ws);
-        }, 500);
-      };
 
       ws.onmessage = async (event) => {
         try {
@@ -165,33 +172,15 @@ export const useLiveStreaming = (
           if (modelTurn?.parts) {
             console.log('📝 Model turn parts:', modelTurn.parts);
             
-            modelTurn.parts.forEach((part: any) => {
-              // Handle text responses
-              if (part.text) {
-                console.log('💬 AI text response:', part.text);
-                const entry: TranscriptEntry = {
-                  id: `ai-${Date.now()}-${Math.random()}`,
-                  text: part.text,
-                  speaker: 'ai',
-                  timestamp: Date.now(),
-                };
-                setCurrentTranscript(prev => {
-                  console.log('Updating transcript with:', entry);
-                  return [...prev, entry];
-                });
-              }
-              
-              // Handle inline data (audio responses)
-              if (part.inlineData) {
-                console.log('📦 Received inline data, mimeType:', part.inlineData.mimeType);
-                
-                // Play audio if it's an audio response
-                if (part.inlineData.mimeType?.startsWith('audio/')) {
-                  console.log('🔊 Playing audio response...');
+              modelTurn.parts.forEach((part: any) => {
+                // Handle inline data (audio responses)
+                if (part.inlineData && part.inlineData.mimeType?.startsWith('audio/')) {
+                  console.log('📦 Received audio from Gemini, mimeType:', part.inlineData.mimeType);
+                  
+                  // Just play audio - Gemini Live API doesn't provide text transcripts
                   playAudioResponse(part.inlineData.data, part.inlineData.mimeType);
                 }
-              }
-            });
+              });
           }
           
           if (turnComplete) {
@@ -294,18 +283,39 @@ export const useLiveStreaming = (
         }
       };
       
-      const playNextAudioChunk = () => {
-        if (!playbackAudioContextRef.current || audioQueueRef.current.length === 0) {
-          isPlayingRef.current = false;
-          console.log('🔇 No more audio chunks to play');
-          return;
+       const playNextAudioChunk = () => {
+         if (!playbackAudioContextRef.current || audioQueueRef.current.length === 0) {
+           isPlayingRef.current = false;
+           console.log('🔇 Gemini audio queue empty');
+           
+           // Keep Gemini flag set for 1 second after last audio chunk
+           // This prevents misattribution during brief gaps
+           if (geminiStopTimeoutRef.current) {
+             clearTimeout(geminiStopTimeoutRef.current);
+           }
+           geminiStopTimeoutRef.current = setTimeout(() => {
+             isGeminiSpeakingRef.current = false;
+             console.log('🔇 Gemini finished speaking (with delay)');
+           }, 1000);
+           
+           return;
+         }
+        
+        // Cancel any pending timeout - Gemini is still speaking
+        if (geminiStopTimeoutRef.current) {
+          clearTimeout(geminiStopTimeoutRef.current);
+          geminiStopTimeoutRef.current = null;
         }
         
+        // Mark that Gemini is speaking
+        isGeminiSpeakingRef.current = true;
         isPlayingRef.current = true;
+        console.log('🤖 Gemini speaking flag SET');
+        
         const audioContext = playbackAudioContextRef.current;
         const audioBuffer = audioQueueRef.current.shift()!;
         
-        console.log('🔊 Creating audio source, duration:', audioBuffer.duration, 'seconds');
+        console.log('🔊 Playing Gemini audio, duration:', audioBuffer.duration, 'seconds');
         
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
@@ -318,10 +328,11 @@ export const useLiveStreaming = (
         
         try {
           source.start(0);
-          console.log('▶️ Audio playback started!');
+          console.log('▶️ Gemini audio playback started!');
         } catch (err) {
           console.error('❌ Error starting audio playback:', err);
           isPlayingRef.current = false;
+          isGeminiSpeakingRef.current = false;
         }
       };
 
@@ -369,7 +380,124 @@ export const useLiveStreaming = (
     }
   };
 
-  const startAudioStreaming = (ws: WebSocket) => {
+   const startSpeechRecognition = () => {
+     try {
+       // @ts-ignore - Web Speech API
+       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+       
+       if (!SpeechRecognition) {
+         console.warn('⚠️ Web Speech API not supported in this browser');
+         return;
+       }
+
+       const recognition = new SpeechRecognition();
+       recognition.continuous = true;
+       recognition.interimResults = true; // Word-by-word for user
+       recognition.lang = 'en-US';
+
+       recognition.onresult = (event: any) => {
+         let interimTranscript = '';
+         let finalTranscript = '';
+         
+         for (let i = event.resultIndex; i < event.results.length; i++) {
+           const transcript = event.results[i][0].transcript;
+           if (event.results[i].isFinal) {
+             finalTranscript += transcript;
+           } else {
+             interimTranscript += transcript;
+           }
+         }
+
+         // Determine speaker based on whether Gemini is currently playing audio
+         const speaker = isGeminiSpeakingRef.current ? 'ai' : 'user';
+         const speakerLabel = speaker === 'ai' ? '🤖 Gemini' : '🗣️ User';
+
+         if (interimTranscript) {
+           console.log(`${speakerLabel} (interim) [flag=${isGeminiSpeakingRef.current}]:`, interimTranscript);
+           
+           setCurrentTranscript(prev => {
+             const interimIndex = currentInterimIdRef.current 
+               ? prev.findIndex((entry, idx) => idx >= Math.max(0, prev.length - 5) && entry.id === currentInterimIdRef.current)
+               : -1;
+             
+             if (interimIndex !== -1) {
+               const newTranscript = [...prev];
+               newTranscript[interimIndex] = {
+                 ...newTranscript[interimIndex],
+                 text: interimTranscript.trim(),
+                 speaker: speaker,
+               };
+               return newTranscript;
+             } else {
+               currentInterimIdRef.current = `${speaker}-interim-${Date.now()}`;
+               return [...prev, {
+                 id: currentInterimIdRef.current,
+                 text: interimTranscript.trim(),
+                 speaker: speaker,
+                 timestamp: Date.now(),
+               }];
+             }
+           });
+         }
+
+         if (finalTranscript) {
+           console.log(`${speakerLabel} (final) [flag=${isGeminiSpeakingRef.current}]:`, finalTranscript);
+           
+           setCurrentTranscript(prev => {
+             const interimIndex = currentInterimIdRef.current 
+               ? prev.findIndex((entry, idx) => idx >= Math.max(0, prev.length - 5) && entry.id === currentInterimIdRef.current)
+               : -1;
+             
+             if (interimIndex !== -1) {
+               const newTranscript = [...prev];
+               newTranscript[interimIndex] = {
+                 id: `${speaker}-${Date.now()}`,
+                 text: finalTranscript.trim(),
+                 speaker: speaker,
+                 timestamp: Date.now(),
+               };
+               currentInterimIdRef.current = null;
+               return newTranscript;
+             } else {
+               currentInterimIdRef.current = null;
+               return prev;
+             }
+           });
+         }
+       };
+
+       recognition.onerror = (event: any) => {
+         if (event.error !== 'no-speech' && event.error !== 'aborted') {
+           console.error('❌ User speech recognition error:', event.error);
+         }
+       };
+
+       recognition.onend = () => {
+         console.log('🔄 User speech recognition ended');
+         // Auto-restart if still streaming and not stopped manually
+         if (speechRecognitionRef.current !== null) {
+           setTimeout(() => {
+             try {
+               if (speechRecognitionRef.current) {
+                 recognition.start();
+                 console.log('✅ Auto-restarted user speech recognition');
+               }
+             } catch (err) {
+               console.error('Error restarting recognition:', err);
+             }
+           }, 100);
+         }
+       };
+
+       recognition.start();
+       speechRecognitionRef.current = recognition;
+       console.log('✅ User speech recognition started - word-by-word');
+     } catch (err) {
+       console.error('❌ Error starting user speech recognition:', err);
+     }
+   };
+
+   const startAudioStreaming = (ws: WebSocket) => {
     if (!mediaStream) {
       console.error('❌ No media stream available for audio');
       return;
@@ -527,6 +655,24 @@ export const useLiveStreaming = (
       clearInterval(durationIntervalRef.current);
     }
 
+    // Clear Gemini speaking timeout
+    if (geminiStopTimeoutRef.current) {
+      clearTimeout(geminiStopTimeoutRef.current);
+      geminiStopTimeoutRef.current = null;
+    }
+    isGeminiSpeakingRef.current = false;
+
+    // Stop speech recognition
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+        speechRecognitionRef.current = null;
+        console.log('🛑 Speech recognition stopped');
+      } catch (err) {
+        console.error('Error stopping speech recognition:', err);
+      }
+    }
+
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -588,6 +734,24 @@ export const useLiveStreaming = (
   const closeLiveModal = () => {
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
+    }
+
+    // Clear Gemini speaking timeout
+    if (geminiStopTimeoutRef.current) {
+      clearTimeout(geminiStopTimeoutRef.current);
+      geminiStopTimeoutRef.current = null;
+    }
+    isGeminiSpeakingRef.current = false;
+
+    // Stop speech recognition
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+        speechRecognitionRef.current = null;
+        console.log('🛑 Speech recognition stopped');
+      } catch (err) {
+        console.error('Error stopping speech recognition:', err);
+      }
     }
 
     if (wsRef.current) {
