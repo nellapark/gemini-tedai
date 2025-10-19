@@ -13,6 +13,8 @@ export const MediaPreviewCard: React.FC<MediaPreviewCardProps> = ({
   onRemove,
   onAnnotate,
 }) => {
+  const needsAnnotation = media.type === 'video' || media.type === 'image';
+
   return (
     <div className="border border-neutral-200 rounded-lg p-3">
       <div className="flex gap-3">
@@ -39,18 +41,24 @@ export const MediaPreviewCard: React.FC<MediaPreviewCardProps> = ({
 
         <div className="flex-1">
           <p className="text-xs text-neutral-500 mb-2 truncate">{media.file.name}</p>
-          {media.annotation ? (
-            <p className="text-sm text-neutral-700 mb-1">{media.annotation}</p>
+          {needsAnnotation ? (
+            <>
+              {media.annotation ? (
+                <p className="text-sm text-neutral-700 mb-1">{media.annotation}</p>
+              ) : (
+                <p className="text-sm text-neutral-400 italic mb-1">No annotation yet</p>
+              )}
+              <button
+                type="button"
+                onClick={onAnnotate}
+                className="text-xs text-primary hover:underline"
+              >
+                {media.annotation ? 'Edit' : 'Add'} annotation
+              </button>
+            </>
           ) : (
-            <p className="text-sm text-neutral-400 italic mb-1">No annotation yet</p>
+            <p className="text-sm text-neutral-600">Audio recording</p>
           )}
-          <button
-            type="button"
-            onClick={onAnnotate}
-            className="text-xs text-primary hover:underline"
-          >
-            {media.annotation ? 'Edit' : 'Add'} annotation
-          </button>
         </div>
       </div>
     </div>

@@ -30,32 +30,36 @@ export const MediaPreviewList: React.FC<MediaPreviewListProps> = ({
     <div className="border border-neutral-200 rounded-xl p-4">
       <h3 className="font-semibold text-neutral-800 mb-3">Your Media ({mediaFiles.length})</h3>
       <div className="space-y-4">
-        {mediaFiles.map((media, index) => (
-          <div key={index}>
-            {editingIndex === index ? (
-              <div className="border border-neutral-200 rounded-lg p-3">
-                <div className="flex gap-3">
-                  <div className="w-24 h-24 flex-shrink-0 bg-neutral-100 rounded-lg" />
-                  <div className="flex-1">
-                    <p className="text-xs text-neutral-500 mb-2 truncate">{media.file.name}</p>
-                    <AnnotationEditor
-                      value={tempAnnotation}
-                      onChange={onAnnotationChange}
-                      onSave={onSaveAnnotation}
-                      onCancel={onCancelEdit}
-                    />
+        {mediaFiles.map((media, index) => {
+          const needsAnnotation = media.type === 'video' || media.type === 'image';
+          
+          return (
+            <div key={index}>
+              {editingIndex === index && needsAnnotation ? (
+                <div className="border border-neutral-200 rounded-lg p-3">
+                  <div className="flex gap-3">
+                    <div className="w-24 h-24 flex-shrink-0 bg-neutral-100 rounded-lg" />
+                    <div className="flex-1">
+                      <p className="text-xs text-neutral-500 mb-2 truncate">{media.file.name}</p>
+                      <AnnotationEditor
+                        value={tempAnnotation}
+                        onChange={onAnnotationChange}
+                        onSave={onSaveAnnotation}
+                        onCancel={onCancelEdit}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <MediaPreviewCard
-                media={media}
-                onRemove={() => onRemove(index)}
-                onAnnotate={() => onStartEdit(index)}
-              />
-            )}
-          </div>
-        ))}
+              ) : (
+                <MediaPreviewCard
+                  media={media}
+                  onRemove={() => onRemove(index)}
+                  onAnnotate={() => onStartEdit(index)}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
