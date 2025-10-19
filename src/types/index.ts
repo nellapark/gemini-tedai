@@ -16,3 +16,12 @@ export type InputMode = 'none' | 'live-streaming' | 'upload';
 
 export type UrgencyLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 
+export interface AudioRecording {
+  id: string;
+  blob: Blob;
+  url: string;
+  duration: number;
+  timestamp: Date;
+}
+
+export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopped';

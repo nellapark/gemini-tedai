@@ -43,10 +43,10 @@ To become the most trusted and efficient way for homeowners to manage any home r
 - **Description:** The user initiates a new service request by providing media and a brief description.
 - **Requirements:**
     - Gemini's Live API with video streaming (have this as recommended option in addition to uploading video) - User records a 30-second walkthrough with their phone -> Stream video in real-time to Gemini while they narrate -> AI provides immediate spoken feedback: "I see a leaking pipe under the sink, approximately 1.5 inches in diameter"
-    - User can record or upload a video or audio (up to 60 seconds).
+    - User can upload a video (up to 60 seconds).
       - Video could also be Thermal camera footage for insulation/HVAC issues, Sound level measurements for noise complaints, etc.
     - User can upload up to 5 photos.
-    - User can add a text description.
+    - User can add a text description and/or record audio.
 - **LATER:** Shot-List Coach (video gen)
   - If input footage is weak, auto-generate a short instruction video: “Stand 6 ft away, pan slowly; capture shutoff valve; include tape measure in frame,” then prompt the user to re-record.
 

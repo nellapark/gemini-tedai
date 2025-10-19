@@ -228,7 +228,7 @@ function App() {
             <AudioRecordingSection
               inputMode={inputMode}
               isAnalyzing={isAnalyzing}
-              onStart={audioRecording.startAudioRecording}
+              onOpenModal={audioRecording.openAudioModal}
             />
 
             {error && <ErrorMessage message={error} />}
@@ -265,8 +265,18 @@ function App() {
       <AudioModal
         isOpen={audioRecording.showAudioModal}
         onClose={audioRecording.closeAudioModal}
-        isRecording={audioRecording.isRecordingAudio}
-        onStop={audioRecording.stopAudioRecording}
+        recordingState={audioRecording.recordingState}
+        recordings={audioRecording.recordings}
+        selectedRecording={audioRecording.selectedRecording}
+        recordingDuration={audioRecording.recordingDuration}
+        onStart={audioRecording.startRecording}
+        onPause={audioRecording.pauseRecording}
+        onResume={audioRecording.resumeRecording}
+        onStop={audioRecording.stopRecording}
+        onRestart={audioRecording.restartRecording}
+        onDelete={audioRecording.deleteRecording}
+        onUpload={audioRecording.uploadRecordings}
+        onSelectRecording={audioRecording.setSelectedRecording}
       />
     </div>
   );
