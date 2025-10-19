@@ -16,7 +16,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/gemini-tedai:latest']
   
-  # Deploy container image to Cloud Run with GEMINI_API_KEY from Secret Manager
+  # Deploy container image to Cloud Run with secrets from Secret Manager
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -31,7 +31,7 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--update-secrets'
-      - 'GEMINI_API_KEY=GEMINI_API_KEY:latest'
+      - 'GEMINI_API_KEY=GEMINI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,BROWSERBASE_API_KEY=BROWSERBASE_API_KEY:latest,BROWSERBASE_PROJECT_ID=BROWSERBASE_PROJECT_ID:latest'
       - '--set-env-vars'
       - 'NODE_ENV=production'
       - '--memory'

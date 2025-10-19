@@ -43,18 +43,31 @@ View your app in AI Studio: https://ai.studio/apps/drive/1saIFZEerZTFtrcmhRrzBgg
    npm run dev          # Frontend dev server (port 3000)
    ```
 
+## Deploy to Google Cloud Run
+
+Your GitHub CI/CD automatically deploys when you push. Just add the missing secrets:
+
+**One-time setup:** Add these 3 secrets to Google Secret Manager:
+- `GOOGLE_API_KEY` (same value as GEMINI_API_KEY)
+- `BROWSERBASE_API_KEY`
+- `BROWSERBASE_PROJECT_ID`
+
+See [ADD_SECRETS.md](ADD_SECRETS.md) for the exact commands.
+
+Then push to GitHub and it will auto-deploy! 🚀
+
 ## Browserbase Setup
 
-For the automated contractor search feature, you'll need to set up Browserbase. See [BROWSERBASE_SETUP.md](BROWSERBASE_SETUP.md) for detailed instructions on:
-- Getting API keys
-- Configuring the environment
-- How the Gemini Computer Use Agent works
-- Troubleshooting
+For the automated contractor search feature, you'll need to set up Browserbase:
+1. Sign up at https://www.browserbase.com
+2. Get your API Key and Project ID from Settings
+3. Add them to your `.env` file (local) or Google Secret Manager (Cloud Run)
 
 ## Architecture
 
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS
-- **Backend**: Express.js + Gemini AI + Browserbase
+- **Backend**: Express.js + Gemini AI + Browserbase + Stagehand
 - **AI Models**: 
-  - `gemini-2.0-flash-exp` for analysis
-  - `computer-use-preview-10-2025` for browser automation
+  - `gemini-2.0-flash-exp` for multimodal analysis
+  - `gemini-2.5-computer-use-preview-10-2025` for browser automation
+- **Infrastructure**: Google Cloud Run + Secret Manager + Browserbase
