@@ -3,16 +3,22 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: 
       - 'build'
+      - '--no-cache'
       - '--build-arg'
       - 'VITE_GEMINI_API_KEY=$$GEMINI_API_KEY'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/gemini-tedai:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/gemini-tedai:$BUILD_ID'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/gemini-tedai:latest'
       - '.'
     secretEnv: ['GEMINI_API_KEY']
   
   # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/gemini-tedai:$COMMIT_SHA']
+    args: ['push', 'gcr.io/$PROJECT_ID/gemini-tedai:$BUILD_ID']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/gemini-tedai:latest']
   
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -22,7 +28,7 @@ steps:
       - 'deploy'
       - 'gemini-tedai'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/gemini-tedai:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/gemini-tedai:$BUILD_ID'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -40,7 +46,8 @@ steps:
       - '300'
 
 images:
-  - 'gcr.io/$PROJECT_ID/gemini-tedai:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/gemini-tedai:$BUILD_ID'
+  - 'gcr.io/$PROJECT_ID/gemini-tedai:latest'
 
 availableSecrets:
   secretManager:
