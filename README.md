@@ -8,13 +8,53 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/1saIFZEerZTFtrcmhRrzBgg0wsUts_TrU
 
+## Features
+
+- **Multimodal AI Analysis**: Analyze home repair issues using video, images, audio, and text
+- **Automated Quote Requesting**: Uses Browserbase + Gemini Computer Use Agent to search TaskRabbit and Thumbtack
+- **Live Streaming**: Stream live video with AI analysis
+- **PDF Generation**: Create professional Scope of Work documents
+- **Real-time Updates**: Server-Sent Events for live progress tracking
+
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:**  Node.js, Browserbase account (for automated quote searching)
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+   ```bash
+   npm install
+   ```
+
+2. Configure environment variables in `.env`:
+   ```bash
+   GEMINI_API_KEY=your_gemini_api_key
+   GOOGLE_API_KEY=your_google_api_key
+   BROWSERBASE_API_KEY=your_browserbase_api_key
+   BROWSERBASE_PROJECT_ID=your_browserbase_project_id
+   ```
+
 3. Run the app:
-   `npm run dev`
+   ```bash
+   # Run both frontend and backend
+   npm run dev:full
+   
+   # Or run separately:
+   npm run dev:backend  # Backend server (port 8080)
+   npm run dev          # Frontend dev server (port 3000)
+   ```
+
+## Browserbase Setup
+
+For the automated contractor search feature, you'll need to set up Browserbase. See [BROWSERBASE_SETUP.md](BROWSERBASE_SETUP.md) for detailed instructions on:
+- Getting API keys
+- Configuring the environment
+- How the Gemini Computer Use Agent works
+- Troubleshooting
+
+## Architecture
+
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS
+- **Backend**: Express.js + Gemini AI + Browserbase
+- **AI Models**: 
+  - `gemini-2.0-flash-exp` for analysis
+  - `computer-use-preview-10-2025` for browser automation

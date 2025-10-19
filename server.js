@@ -3,6 +3,7 @@ import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Stagehand } from '@browserbasehq/stagehand';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -565,9 +566,9 @@ async function searchContractorsWithComputerUse(sessionData) {
   }
 }
 
-// Search a specific platform using Gemini computer use
+// Search a specific platform using Browserbase + Gemini Computer Use Agent
 async function searchPlatform(platform, sessionData) {
-  const { jobId, zipCode, category } = sessionData;
+  const { jobId, zipCode, category, subcategory, problemSummary } = sessionData;
   const sessionId = `${platform}-${Date.now()}`;
   
   // Initialize session state
@@ -576,7 +577,7 @@ async function searchPlatform(platform, sessionData) {
     platform,
     status: 'initializing',
     progress: 0,
-    currentAction: 'Setting up browser automation...',
+    currentAction: 'Setting up Browserbase session with Google Computer Use...',
     screenshot: null,
     contractors: [],
     error: null,
@@ -586,103 +587,230 @@ async function searchPlatform(platform, sessionData) {
   sessionData.sessions.push(session);
   broadcastToClients(jobId, { type: 'session_update', session });
 
+  let stagehand;
+
   try {
-    // Update status to navigating
+    // Initialize Stagehand with Browserbase - following the gemini-browser pattern
+    updateSession(session, {
+      progress: 5,
+      currentAction: 'Creating remote browser session...',
+    });
+    broadcastToClients(jobId, { type: 'session_update', session });
+
+    stagehand = new Stagehand({
+      env: 'BROWSERBASE',
+      useAPI: false, // Required for agent pattern with Computer Use
+      verbose: 1, // 0 = errors only, 1 = info, 2 = debug
+      browserbaseSessionCreateParams: {
+        projectId: process.env.BROWSERBASE_PROJECT_ID,
+        browserSettings: {
+          viewport: {
+            width: 1288,
+            height: 711,
+          },
+        },
+      },
+    });
+
+    await stagehand.init();
+    console.log(`Stagehand initialized for ${platform}`);
+    console.log(`Browserbase session ID: ${stagehand.browserbaseSessionID}`);
+
+    // Get the page
+    const page = stagehand.page;
+    
+    // Update status
     updateSession(session, {
       status: 'navigating',
-      progress: 10,
-      currentAction: `Navigating to ${platform === 'taskrabbit' ? 'TaskRabbit.com' : 'Thumbtack.com'}...`,
+      progress: 15,
+      currentAction: `Opening ${platform === 'taskrabbit' ? 'TaskRabbit.com' : 'Thumbtack.com'}...`,
     });
     broadcastToClients(jobId, { type: 'session_update', session });
 
-    // Initialize Gemini with computer use
-    const computerUseModel = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp',
-    });
-
-    // Simulate navigation (in production, this would use actual computer use API)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Step 1: Navigate to the website
+    const url = platform === 'taskrabbit' 
+      ? 'https://www.taskrabbit.com'
+      : 'https://www.thumbtack.com';
     
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForTimeout(2000);
+    
+    // Capture screenshot
+    let screenshot = await capturePageScreenshot(page);
+    updateSession(session, {
+      progress: 25,
+      currentAction: 'Website loaded successfully',
+      screenshot,
+    });
+    broadcastToClients(jobId, { type: 'session_update', session });
+
+    // Step 2: Create Computer Use Agent for autonomous web browsing
     updateSession(session, {
       status: 'searching',
-      progress: 30,
-      currentAction: `Searching for ${category} contractors in zip code ${zipCode}...`,
+      progress: 35,
+      currentAction: 'Initializing Gemini Computer Use Agent...',
     });
     broadcastToClients(jobId, { type: 'session_update', session });
 
-    // Generate mock contractor data (in production, this would come from actual web scraping)
-    const mockContractors = await generateMockContractors(platform, category, zipCode);
+    const agent = stagehand.agent({
+      provider: 'google',
+      model: 'gemini-2.5-computer-use-preview-10-2025',
+      instructions: `You are a helpful assistant that can use a web browser to search for home service contractors.
+      You are currently on ${url}.
+      
+      Your task:
+      1. Find the search or location input field
+      2. Enter the zip code "${zipCode}"
+      3. Search for "${category}" or "${subcategory}" services
+      4. Wait for results to load
+      5. Extract the top 3-5 contractor listings
+      
+      For each contractor, extract:
+      - name (string)
+      - rating (number, e.g., 4.8)
+      - reviewCount (number)
+      - price (string, e.g., "$50-100/hr" or "From $75")
+      - description (brief summary of services)
+      - availability (if visible)
+      
+      Return the results as a JSON array.
+      Do not ask follow-up questions. Use your best judgment.`,
+      options: {
+        apiKey: process.env.GOOGLE_API_KEY,
+      },
+    });
+
+    console.log(`Executing Computer Use Agent for ${platform}...`);
     
-    // Add contractors to session
-    session.contractors = mockContractors;
-    sessionData.contractors.push(...mockContractors);
+    updateSession(session, {
+      progress: 50,
+      currentAction: 'AI agent is searching and extracting contractor information...',
+    });
+    broadcastToClients(jobId, { type: 'session_update', session });
+
+    // Execute the agent with the instruction
+    const instruction = `Search for ${category} contractors in zip code ${zipCode} and extract their information.`;
+    
+    const result = await agent.execute({
+      instruction: instruction,
+      maxSteps: 20,
+      autoScreenshot: true,
+    });
+
+    // Capture final screenshot
+    screenshot = await capturePageScreenshot(page);
     
     updateSession(session, {
       status: 'extracting',
       progress: 70,
-      currentAction: `Extracting contractor information... Found ${mockContractors.length} contractors`,
+      currentAction: 'Processing AI agent results...',
+      screenshot,
     });
     broadcastToClients(jobId, { type: 'session_update', session });
+
+    console.log(`Agent execution result for ${platform}:`, result);
+
+    // Parse contractors from agent result
+    let contractors = [];
+    if (result.success) {
+      try {
+        // Try to parse JSON from the result
+        const resultText = result.result || '';
+        const jsonMatch = resultText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          contractors = JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        console.warn(`Failed to parse contractors from ${platform} agent result:`, e);
+      }
+    }
+
+    console.log(`Extracted ${contractors.length} contractors from ${platform}`);
+
+    // Format contractors for our system
+    const formattedContractors = contractors.map((c, i) => ({
+      id: `${platform}-${Date.now()}-${i}`,
+      name: c.name || `Contractor ${i + 1}`,
+      rating: parseFloat(c.rating) || 4.5,
+      reviewCount: parseInt(c.reviewCount || c.review_count) || 0,
+      price: c.price || 'Contact for pricing',
+      description: c.description || 'Professional service provider',
+      profileUrl: `https://${platform}.com`,
+      availability: c.availability || 'Contact for availability',
+      platform,
+      profileImage: `https://i.pravatar.cc/150?img=${(i + 1) * 7}`,
+    }));
     
-    // Broadcast contractors found
+    session.contractors = formattedContractors;
+    sessionData.contractors.push(...formattedContractors);
+    
+    updateSession(session, {
+      progress: 90,
+      currentAction: `Extracted ${formattedContractors.length} contractors`,
+    });
     broadcastToClients(jobId, { 
       type: 'contractors_found',
-      contractors: mockContractors,
+      contractors: formattedContractors,
       platform 
     });
+    broadcastToClients(jobId, { type: 'session_update', session });
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
+    // Final screenshot
+    screenshot = await capturePageScreenshot(page);
+    
     // Complete session
     updateSession(session, {
       status: 'completed',
       progress: 100,
-      currentAction: `Search complete! Found ${mockContractors.length} contractors`,
+      currentAction: `Search complete! Found ${formattedContractors.length} contractors`,
+      screenshot,
       endTime: new Date(),
     });
+    
     broadcastToClients(jobId, { type: 'session_update', session });
 
   } catch (error) {
     console.error(`Error searching ${platform}:`, error);
+    
     updateSession(session, {
       status: 'error',
+      progress: 100,
       error: error.message,
-      currentAction: `Error: ${error.message}`,
+      currentAction: `Failed: ${error.message}`,
+      endTime: new Date(),
     });
     broadcastToClients(jobId, { type: 'session_update', session });
+  } finally {
+    // Clean up
+    if (stagehand) {
+      try {
+        await stagehand.close();
+        console.log(`Closed Stagehand for ${platform}`);
+      } catch (e) {
+        console.error('Error closing Stagehand:', e);
+      }
+    }
+  }
+}
+
+// Helper function to capture page screenshot
+async function capturePageScreenshot(page) {
+  try {
+    const screenshotBuffer = await page.screenshot({
+      type: 'jpeg',
+      quality: 80,
+      fullPage: false,
+    });
+    return `data:image/jpeg;base64,${screenshotBuffer.toString('base64')}`;
+  } catch (error) {
+    console.error('Error capturing screenshot:', error);
+    return null;
   }
 }
 
 // Helper function to update session
 function updateSession(session, updates) {
   Object.assign(session, updates);
-}
-
-// Generate mock contractors (replace with actual web scraping in production)
-async function generateMockContractors(platform, category, zipCode) {
-  const contractors = [];
-  const count = Math.floor(Math.random() * 4) + 3; // 3-6 contractors
-
-  for (let i = 0; i < count; i++) {
-    const rating = (Math.random() * 1.5 + 3.5).toFixed(1); // 3.5-5.0
-    const reviewCount = Math.floor(Math.random() * 200) + 10;
-    const price = Math.floor(Math.random() * 200) + 100;
-    
-    contractors.push({
-      id: `${platform}-${Date.now()}-${i}`,
-      name: `${category} Pro ${i + 1}`,
-      rating: parseFloat(rating),
-      reviewCount,
-      price: `$${price}-$${price + 150}`,
-      description: `Professional ${category.toLowerCase()} services with ${Math.floor(Math.random() * 15) + 5} years experience. Licensed and insured.`,
-      profileUrl: `https://${platform}.com/contractor-${i}`,
-      availability: 'Available this week',
-      platform,
-      profileImage: `https://i.pravatar.cc/150?img=${i + 1}`,
-    });
-  }
-
-  return contractors;
 }
 
 // Health check endpoint

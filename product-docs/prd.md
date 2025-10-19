@@ -80,10 +80,10 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - Red-flag quotes that are significant outliers (either too high or too low).
     - KEEP TRACK OF REVIEWS AND SCORES TO PROVIDE TO USER AT THE END
 ### F4.1: Assets Generation for User
-- **Description:** Generates videos (with generated music) and graphics of the side by side comparisons of options (tradeoffs, etc.) to make it easy to understand and in native tongue -> language agnostic (in spanish or korean)
+- **Description:** Generates videos (with generated music) and graphics of the side by side comparisons of options (tradeoffs, etc.) (nano banana: include images of the contractors but wii-ified) to make it easy to understand and in native tongue -> language agnostic (in spanish or korean)
 - **Implementation:** Create these assets and put it in their Google Drive (GSuite integration)
 
-### F5: Automated Contractor Vetting
+### F5: Automated Contractor Vetting (IMPLEMENT LATER)
 - **Description:** The agent provides crucial trust and safety information for each bidding contractor.
 - **Requirements:**
     - Automatically check for valid state/local licenses.
