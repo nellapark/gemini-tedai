@@ -16,6 +16,14 @@ COPY . .
 ARG VITE_GEMINI_API_KEY
 ENV VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY
 
+# Debug: Verify API key is set (shows only length for security)
+RUN echo "🔍 Checking VITE_GEMINI_API_KEY..." && \
+    if [ -z "$VITE_GEMINI_API_KEY" ]; then \
+      echo "❌ ERROR: VITE_GEMINI_API_KEY is empty!" && exit 1; \
+    else \
+      echo "✅ VITE_GEMINI_API_KEY is set (length: $(echo -n $VITE_GEMINI_API_KEY | wc -c))"; \
+    fi
+
 # Build the React app (Vite will embed VITE_GEMINI_API_KEY into the bundle)
 RUN npm run build
 
