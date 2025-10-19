@@ -109,6 +109,7 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
                   playsInline
                   muted
                   className="w-full h-full object-cover"
+                  style={{ transform: 'scaleX(-1)' }}
                 />
                 {streamState === 'streaming' && (
                   <div className="absolute top-4 right-4 flex items-center gap-2 bg-red-500 text-white px-3 py-1 rounded-full">
@@ -128,6 +129,7 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
                 ref={playbackVideoRef}
                 controls
                 className="w-full h-full object-cover"
+                style={{ transform: 'scaleX(-1)' }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
