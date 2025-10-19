@@ -1,16 +1,21 @@
 steps:
   # Build the container image with API key
   - name: 'gcr.io/cloud-builders/docker'
-    args: 
-      - 'build'
-      - '--no-cache'
-      - '--build-arg'
-      - 'VITE_GEMINI_API_KEY=$$GEMINI_API_KEY'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/gemini-tedai:$BUILD_ID'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/gemini-tedai:latest'
-      - '.'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🔍 Verifying secret before Docker build..."
+        echo "Secret length: $${#GEMINI_API_KEY}"
+        echo "First 10 chars: $${GEMINI_API_KEY:0:10}..."
+        
+        # Build with the secret properly passed
+        docker build \
+          --no-cache \
+          --build-arg "VITE_GEMINI_API_KEY=$${GEMINI_API_KEY}" \
+          -t gcr.io/$PROJECT_ID/gemini-tedai:$BUILD_ID \
+          -t gcr.io/$PROJECT_ID/gemini-tedai:latest \
+          .
     secretEnv: ['GEMINI_API_KEY']
   
   # Push the container image to Container Registry
