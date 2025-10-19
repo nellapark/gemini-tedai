@@ -98,7 +98,7 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Live Streaming with Gemini AI" size="xl">
       <div className="space-y-6">
         {/* Video and Transcript Container */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
           {/* Video Preview */}
           <div className="bg-neutral-900 rounded-xl overflow-hidden aspect-video relative">
             {(streamState === 'idle' || streamState === 'streaming') && !selectedSession ? (
@@ -129,7 +129,6 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
                 ref={playbackVideoRef}
                 controls
                 className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
@@ -142,7 +141,7 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
           </div>
 
           {/* Live Transcript */}
-          <div className="bg-neutral-50 rounded-xl p-4 flex flex-col">
+          {/* <div className="bg-neutral-50 rounded-xl p-4 flex flex-col">
             <h3 className="text-sm font-semibold text-neutral-700 mb-3">Live Transcript</h3>
             <div className="flex-1 overflow-y-auto space-y-3 min-h-[300px] max-h-[400px]">
               {displayTranscript.length === 0 ? (
@@ -172,7 +171,7 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
               )}
               <div ref={transcriptEndRef} />
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Control Buttons */}

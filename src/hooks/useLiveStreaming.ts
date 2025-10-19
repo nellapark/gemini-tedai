@@ -27,6 +27,7 @@ export const useLiveStreaming = (
   const isPlayingRef = useRef<boolean>(false);
   const speechRecognitionRef = useRef<any>(null);
   const currentInterimIdRef = useRef<string | null>(null);
+  const currentSpeakerRef = useRef<'user' | 'ai'>('user');
   const isGeminiSpeakingRef = useRef<boolean>(false);
   const geminiStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -41,6 +42,11 @@ export const useLiveStreaming = (
       setStreamState('idle');
       setCurrentTranscript([]);
       setStreamDuration(0);
+      
+      // Reset speaker tracking for new session
+      currentInterimIdRef.current = null;
+      currentSpeakerRef.current = 'user';
+      isGeminiSpeakingRef.current = false;
     } catch (err) {
       setError('Failed to access camera and microphone. Please make sure you granted permissions.');
     }
@@ -433,6 +439,13 @@ Remember: You're helping them document and understand their repair issue through
          const speaker = isGeminiSpeakingRef.current ? 'ai' : 'user';
          const speakerLabel = speaker === 'ai' ? '🤖 Gemini' : '🗣️ User';
 
+         // If speaker changed, finalize the previous entry and start a new one
+         if (currentSpeakerRef.current !== speaker) {
+           console.log(`🔄 Speaker changed from ${currentSpeakerRef.current} to ${speaker}`);
+           currentInterimIdRef.current = null; // Clear interim ID to start new entry
+           currentSpeakerRef.current = speaker;
+         }
+
          if (interimTranscript) {
            console.log(`${speakerLabel} (interim) [flag=${isGeminiSpeakingRef.current}]:`, interimTranscript);
            
@@ -441,15 +454,16 @@ Remember: You're helping them document and understand their repair issue through
                ? prev.findIndex((entry, idx) => idx >= Math.max(0, prev.length - 5) && entry.id === currentInterimIdRef.current)
                : -1;
              
-             if (interimIndex !== -1) {
+             if (interimIndex !== -1 && prev[interimIndex].speaker === speaker) {
+               // Update existing interim entry ONLY if speaker matches
                const newTranscript = [...prev];
                newTranscript[interimIndex] = {
                  ...newTranscript[interimIndex],
                  text: interimTranscript.trim(),
-                 speaker: speaker,
                };
                return newTranscript;
              } else {
+               // Create new interim entry
                currentInterimIdRef.current = `${speaker}-interim-${Date.now()}`;
                return [...prev, {
                  id: currentInterimIdRef.current,
@@ -461,30 +475,45 @@ Remember: You're helping them document and understand their repair issue through
            });
          }
 
-         if (finalTranscript) {
-           console.log(`${speakerLabel} (final) [flag=${isGeminiSpeakingRef.current}]:`, finalTranscript);
-           
-           setCurrentTranscript(prev => {
-             const interimIndex = currentInterimIdRef.current 
-               ? prev.findIndex((entry, idx) => idx >= Math.max(0, prev.length - 5) && entry.id === currentInterimIdRef.current)
-               : -1;
-             
-             if (interimIndex !== -1) {
-               const newTranscript = [...prev];
-               newTranscript[interimIndex] = {
-                 id: `${speaker}-${Date.now()}`,
-                 text: finalTranscript.trim(),
-                 speaker: speaker,
-                 timestamp: Date.now(),
-               };
-               currentInterimIdRef.current = null;
-               return newTranscript;
-             } else {
-               currentInterimIdRef.current = null;
-               return prev;
-             }
-           });
-         }
+          if (finalTranscript) {
+            const trimmedFinal = finalTranscript.trim();
+            console.log(`${speakerLabel} (final) [flag=${isGeminiSpeakingRef.current}]:`, trimmedFinal);
+            
+            setCurrentTranscript(prev => {
+              // Check for duplicates: if the last entry for this speaker has the exact same text, skip it
+              const lastEntryForSpeaker = [...prev].reverse().find(entry => entry.speaker === speaker);
+              if (lastEntryForSpeaker && lastEntryForSpeaker.text === trimmedFinal) {
+                console.log(`⚠️ Skipping duplicate final transcript for ${speakerLabel}:`, trimmedFinal);
+                return prev; // Skip this duplicate
+              }
+              
+              const interimIndex = currentInterimIdRef.current 
+                ? prev.findIndex((entry, idx) => idx >= Math.max(0, prev.length - 5) && entry.id === currentInterimIdRef.current)
+                : -1;
+              
+              if (interimIndex !== -1 && prev[interimIndex].speaker === speaker) {
+                // Replace interim entry with final ONLY if speaker matches
+                const newTranscript = [...prev];
+                newTranscript[interimIndex] = {
+                  id: `${speaker}-${Date.now()}`,
+                  text: trimmedFinal,
+                  speaker: speaker,
+                  timestamp: Date.now(),
+                };
+                currentInterimIdRef.current = null;
+                return newTranscript;
+              } else {
+                // No matching interim, add as new final entry
+                currentInterimIdRef.current = null;
+                return [...prev, {
+                  id: `${speaker}-${Date.now()}`,
+                  text: trimmedFinal,
+                  speaker: speaker,
+                  timestamp: Date.now(),
+                }];
+              }
+            });
+          }
        };
 
        recognition.onerror = (event: any) => {
@@ -683,6 +712,10 @@ Remember: You're helping them document and understand their repair issue through
     }
     isGeminiSpeakingRef.current = false;
 
+    // Reset speaker tracking
+    currentInterimIdRef.current = null;
+    currentSpeakerRef.current = 'user';
+
     // Stop speech recognition
     if (speechRecognitionRef.current) {
       try {
@@ -763,6 +796,10 @@ Remember: You're helping them document and understand their repair issue through
       geminiStopTimeoutRef.current = null;
     }
     isGeminiSpeakingRef.current = false;
+
+    // Reset speaker tracking
+    currentInterimIdRef.current = null;
+    currentSpeakerRef.current = 'user';
 
     // Stop speech recognition
     if (speechRecognitionRef.current) {
