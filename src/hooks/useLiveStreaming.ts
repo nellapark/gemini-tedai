@@ -22,6 +22,9 @@ export const useLiveStreaming = (
   const streamStartTimeRef = useRef<number>(0);
   const currentSessionIdRef = useRef<string>('');
   const audioContextRef = useRef<AudioContext | null>(null);
+  const playbackAudioContextRef = useRef<AudioContext | null>(null);
+  const audioQueueRef = useRef<AudioBuffer[]>([]);
+  const isPlayingRef = useRef<boolean>(false);
 
   const openLiveModal = async () => {
     try {
@@ -88,12 +91,19 @@ export const useLiveStreaming = (
           setup: {
             model: 'models/gemini-2.0-flash-exp',
             generation_config: {
-              response_modalities: ['TEXT'],
+              response_modalities: 'audio',
+              speech_config: {
+                voice_config: {
+                  prebuilt_voice_config: {
+                    voice_name: 'Puck'
+                  }
+                }
+              },
               temperature: 0.7,
             },
             system_instruction: {
               parts: [{
-                text: 'You are an AI assistant helping users with home repair issues. When they show you their problem via video and describe it with audio, provide helpful real-time feedback. Ask clarifying questions and help them understand what needs to be fixed. Be conversational, helpful, and responsive. Always acknowledge what you see and hear.'
+                text: 'You are an AI assistant helping users with home repair issues. When they show you their problem via video and describe it with audio, provide helpful real-time feedback. Ask clarifying questions and help them understand what needs to be fixed. Be conversational, helpful, and responsive. Keep responses brief and natural. Always acknowledge what you see and hear.'
               }]
             }
           }
@@ -171,9 +181,15 @@ export const useLiveStreaming = (
                 });
               }
               
-              // Handle inline data (could be audio or images)
+              // Handle inline data (audio responses)
               if (part.inlineData) {
                 console.log('📦 Received inline data, mimeType:', part.inlineData.mimeType);
+                
+                // Play audio if it's an audio response
+                if (part.inlineData.mimeType?.startsWith('audio/')) {
+                  console.log('🔊 Playing audio response...');
+                  playAudioResponse(part.inlineData.data, part.inlineData.mimeType);
+                }
               }
             });
           }
@@ -192,6 +208,120 @@ export const useLiveStreaming = (
         if (data.error) {
           console.error('❌ Server error:', data.error);
           setError(`Gemini API Error: ${data.error.message || 'Unknown error'}`);
+        }
+      };
+      
+      const createWavHeader = (dataLength: number, sampleRate: number, numChannels: number = 1) => {
+        const header = new ArrayBuffer(44);
+        const view = new DataView(header);
+
+        // "RIFF" chunk descriptor
+        view.setUint32(0, 0x52494646, false); // "RIFF"
+        view.setUint32(4, 36 + dataLength, true); // File size - 8
+        view.setUint32(8, 0x57415645, false); // "WAVE"
+
+        // "fmt " sub-chunk
+        view.setUint32(12, 0x666d7420, false); // "fmt "
+        view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+        view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
+        view.setUint16(22, numChannels, true); // NumChannels
+        view.setUint32(24, sampleRate, true); // SampleRate
+        view.setUint32(28, sampleRate * numChannels * 2, true); // ByteRate
+        view.setUint16(32, numChannels * 2, true); // BlockAlign
+        view.setUint16(34, 16, true); // BitsPerSample
+
+        // "data" sub-chunk
+        view.setUint32(36, 0x64617461, false); // "data"
+        view.setUint32(40, dataLength, true); // Subchunk2Size
+
+        return new Uint8Array(header);
+      };
+
+      const playAudioResponse = async (base64Audio: string, mimeType: string) => {
+        try {
+          console.log('🎵 Attempting to play audio, mime:', mimeType, 'data length:', base64Audio.length);
+          
+          // Initialize playback audio context if not exists
+          if (!playbackAudioContextRef.current) {
+            playbackAudioContextRef.current = new AudioContext();
+            console.log('🔊 Created new AudioContext for playback');
+          }
+          
+          const audioContext = playbackAudioContextRef.current;
+          
+          // Decode base64 to binary
+          const binaryString = atob(base64Audio);
+          const pcmData = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            pcmData[i] = binaryString.charCodeAt(i);
+          }
+          
+          console.log('📦 Decoded PCM data:', pcmData.length, 'bytes');
+          
+          // Extract sample rate from mime type (e.g., "audio/pcm;rate=24000")
+          let sampleRate = 24000; // Default
+          const rateMatch = mimeType.match(/rate=(\d+)/);
+          if (rateMatch) {
+            sampleRate = parseInt(rateMatch[1]);
+          }
+          console.log('📊 Sample rate:', sampleRate, 'Hz');
+          
+          // Create WAV file from PCM data
+          const wavHeader = createWavHeader(pcmData.length, sampleRate, 1);
+          const wavFile = new Uint8Array(wavHeader.length + pcmData.length);
+          wavFile.set(wavHeader, 0);
+          wavFile.set(pcmData, wavHeader.length);
+          
+          console.log('🎼 Created WAV file:', wavFile.length, 'bytes');
+          
+          try {
+            const audioBuffer = await audioContext.decodeAudioData(wavFile.buffer.slice(0));
+            console.log('✅ Audio decoded successfully:', audioBuffer.duration, 'seconds');
+            
+            // Add to queue
+            audioQueueRef.current.push(audioBuffer);
+            console.log('📋 Added to queue, total chunks:', audioQueueRef.current.length);
+            
+            // Start playing if not already playing
+            if (!isPlayingRef.current) {
+              playNextAudioChunk();
+            }
+          } catch (decodeErr) {
+            console.error('❌ Error decoding WAV audio:', decodeErr);
+          }
+        } catch (err) {
+          console.error('❌ Error in playAudioResponse:', err);
+        }
+      };
+      
+      const playNextAudioChunk = () => {
+        if (!playbackAudioContextRef.current || audioQueueRef.current.length === 0) {
+          isPlayingRef.current = false;
+          console.log('🔇 No more audio chunks to play');
+          return;
+        }
+        
+        isPlayingRef.current = true;
+        const audioContext = playbackAudioContextRef.current;
+        const audioBuffer = audioQueueRef.current.shift()!;
+        
+        console.log('🔊 Creating audio source, duration:', audioBuffer.duration, 'seconds');
+        
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        
+        source.onended = () => {
+          console.log('🔇 Audio chunk finished, checking for more...');
+          playNextAudioChunk();
+        };
+        
+        try {
+          source.start(0);
+          console.log('▶️ Audio playback started!');
+        } catch (err) {
+          console.error('❌ Error starting audio playback:', err);
+          isPlayingRef.current = false;
         }
       };
 
@@ -248,14 +378,18 @@ export const useLiveStreaming = (
     try {
       console.log('🎤 Starting audio streaming...');
       
-      // Create audio context for processing
-      const audioContext = new AudioContext({ sampleRate: 16000 });
+      // Create audio context - use default sample rate first, we'll resample
+      const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
       
       const source = audioContext.createMediaStreamSource(mediaStream);
-      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      
+      // Use ScriptProcessor with larger buffer for better stability
+      const processor = audioContext.createScriptProcessor(16384, 1, 1);
       
       let chunkCount = 0;
+      let lastSendTime = 0;
+      const sendInterval = 100; // Send every 100ms to avoid overwhelming
       
       processor.onaudioprocess = (e) => {
         if (ws.readyState !== WebSocket.OPEN) {
@@ -265,25 +399,49 @@ export const useLiveStreaming = (
           return;
         }
         
-        const inputData = e.inputBuffer.getChannelData(0);
+        const now = Date.now();
+        if (now - lastSendTime < sendInterval) {
+          return; // Throttle sending
+        }
+        lastSendTime = now;
         
-        // Convert float32 audio to PCM16
-        const pcm16 = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          const s = Math.max(-1, Math.min(1, inputData[i]));
+        const inputData = e.inputBuffer.getChannelData(0);
+        const sampleRate = e.inputBuffer.sampleRate;
+        
+        // Resample to 16kHz if needed
+        let audioData = inputData;
+        if (sampleRate !== 16000) {
+          const ratio = 16000 / sampleRate;
+          const newLength = Math.floor(inputData.length * ratio);
+          const resampledData = new Float32Array(newLength);
+          
+          for (let i = 0; i < newLength; i++) {
+            const srcIndex = i / ratio;
+            const srcIndexFloor = Math.floor(srcIndex);
+            const srcIndexCeil = Math.min(srcIndexFloor + 1, inputData.length - 1);
+            const t = srcIndex - srcIndexFloor;
+            resampledData[i] = inputData[srcIndexFloor] * (1 - t) + inputData[srcIndexCeil] * t;
+          }
+          audioData = resampledData;
+        }
+        
+        // Convert float32 to PCM16
+        const pcm16 = new Int16Array(audioData.length);
+        for (let i = 0; i < audioData.length; i++) {
+          const s = Math.max(-1, Math.min(1, audioData[i]));
           pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
         
         // Convert to base64
         const base64 = btoa(
-          String.fromCharCode.apply(null, Array.from(new Uint8Array(pcm16.buffer)))
+          String.fromCharCode(...Array.from(new Uint8Array(pcm16.buffer)))
         );
         
-        // Send audio chunk to Gemini
+        // Send audio chunk to Gemini with correct format
         const message = {
           realtimeInput: {
             mediaChunks: [{
-              mimeType: 'audio/pcm;rate=16000',
+              mimeType: 'audio/pcm',
               data: base64
             }]
           }
@@ -292,8 +450,8 @@ export const useLiveStreaming = (
         try {
           ws.send(JSON.stringify(message));
           chunkCount++;
-          if (chunkCount === 1 || chunkCount % 50 === 0) {
-            console.log(`🎵 Audio chunk #${chunkCount} sent (${pcm16.length} samples)`);
+          if (chunkCount === 1 || chunkCount % 10 === 0) {
+            console.log(`🎵 Audio chunk #${chunkCount} sent (${pcm16.length} samples @ 16kHz)`);
           }
         } catch (err) {
           console.error('❌ Error sending audio chunk:', err);
@@ -441,6 +599,15 @@ export const useLiveStreaming = (
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
+
+    if (playbackAudioContextRef.current) {
+      playbackAudioContextRef.current.close();
+      playbackAudioContextRef.current = null;
+    }
+
+    // Clear audio queue
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
