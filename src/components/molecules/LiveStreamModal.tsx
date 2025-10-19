@@ -38,7 +38,6 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
   onSelectSession,
 }) => {
   const transcriptEndRef = useRef<HTMLDivElement>(null);
-  const playbackVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (transcriptEndRef.current) {
@@ -58,18 +57,6 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
     }
   }, [videoRef, mediaStream, streamState]);
 
-  useEffect(() => {
-    if (playbackVideoRef.current && selectedSession && streamState === 'stopped') {
-      const session = sessions.find(s => s.id === selectedSession);
-      if (session && session.videoUrl) {
-        console.log('📹 Setting playback video source:', session.videoUrl);
-        playbackVideoRef.current.src = session.videoUrl;
-        playbackVideoRef.current.load();
-      } else {
-        console.warn('⚠️ Session not found or no video URL:', selectedSession);
-      }
-    }
-  }, [selectedSession, sessions, streamState]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -101,6 +88,11 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
   };
 
   const displayTranscript = getDisplayTranscript();
+  
+  // Get the current session's video URL
+  const currentVideoUrl = selectedSession 
+    ? sessions.find(s => s.id === selectedSession)?.videoUrl 
+    : null;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Live Streaming with Gemini AI" size="xl">
@@ -132,13 +124,18 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
                   </div>
                 )}
               </>
-            ) : selectedSession && streamState === 'stopped' ? (
+            ) : selectedSession && streamState === 'stopped' && currentVideoUrl ? (
               <video
-                key={`playback-${selectedSession}`}
-                ref={playbackVideoRef}
+                key={currentVideoUrl}
                 controls
+                playsInline
+                preload="metadata"
                 className="w-full h-full object-cover"
-              />
+                style={{ display: 'block' }}
+              >
+                <source src={currentVideoUrl} type="video/webm" />
+                Your browser does not support the video tag.
+              </video>
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <div className="text-center text-neutral-400">
