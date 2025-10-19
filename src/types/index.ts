@@ -6,6 +6,12 @@ export interface MediaFile {
   source?: 'upload' | 'live-stream'; // Track where the media came from
 }
 
+export interface AgentLog {
+  timestamp: Date;
+  message: string;
+  type: 'info' | 'action' | 'success' | 'error';
+}
+
 export interface ComputerUseSession {
   id: string;
   platform: 'taskrabbit' | 'thumbtack';
@@ -16,6 +22,7 @@ export interface ComputerUseSession {
   liveViewUrl?: string;
   browserbaseSessionID?: string;
   contractors: ContractorLead[];
+  logs: AgentLog[]; // Timestamped log entries
   error?: string;
   startTime: Date;
   endTime?: Date;

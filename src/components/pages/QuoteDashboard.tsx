@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ComputerUseSession, ContractorLead, AnalysisResult } from '../../types';
 import { Button } from '../atoms/Button';
 import { Spinner } from '../atoms/Spinner';
@@ -173,7 +173,7 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                       <p className="text-xs text-blue-100">Browser Automation</p>
                     </div>
                   </div>
-                  <Badge variant={session.status === 'completed' ? 'success' : 'secondary'}>
+                  <Badge variant={session.status === 'completed' ? 'success' : session.status === 'error' ? 'danger' : 'primary'}>
                     {session.status}
                   </Badge>
                 </div>
@@ -198,44 +198,6 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                         <span>LIVE</span>
                       </div>
                     )}
-                    
-                    {/* Current action overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-6 pointer-events-none z-10">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 mt-1">
-                          {session.status === 'navigating' && (
-                            <svg className="w-5 h-5 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          )}
-                          {session.status === 'searching' && (
-                            <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                          )}
-                          {session.status === 'extracting' && (
-                            <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          )}
-                          {session.status === 'completed' && (
-                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-semibold leading-tight">{session.currentAction}</p>
-                          <p className="text-gray-300 text-xs mt-1">
-                            {session.status === 'navigating' && '🌐 Browsing website...'}
-                            {session.status === 'searching' && '🔍 Searching for contractors...'}
-                            {session.status === 'extracting' && '📋 Extracting contractor details...'}
-                            {session.status === 'completed' && '✅ Search completed'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
                   </>
                 ) : (
                   /* Loading state before live view is available */
@@ -270,10 +232,80 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                 </div>
               </div>
 
-              {/* Current Action */}
+              {/* Agent Activity Logs */}
+              <div className="p-4 border-t border-neutral-200 bg-neutral-50">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-neutral-700 flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Agent Activity
+                  </h4>
+                  <span className="text-xs text-neutral-500">
+                    {session.logs?.length || 0} event{(session.logs?.length || 0) !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                
+                <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+                  <div 
+                    className="max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-neutral-100"
+                    ref={(el) => {
+                      // Auto-scroll to bottom when new logs are added
+                      if (el && session.logs && session.logs.length > 0) {
+                        el.scrollTop = el.scrollHeight;
+                      }
+                    }}
+                  >
+                    {session.logs && session.logs.length > 0 ? (
+                      <div className="divide-y divide-neutral-100">
+                        {session.logs.map((log, index) => {
+                          const logTime = new Date(log.timestamp);
+                          const timeString = logTime.toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            second: '2-digit',
+                            hour12: false 
+                          });
+                          
+                          return (
+                            <div 
+                              key={index} 
+                              className={`p-3 flex items-start space-x-3 hover:bg-neutral-50 transition-colors ${
+                                log.type === 'error' ? 'bg-red-50' : 
+                                log.type === 'success' ? 'bg-green-50' : 
+                                ''
+                              }`}
+                            >
+                              <span className="text-xs font-mono text-neutral-400 flex-shrink-0 mt-0.5">
+                                {timeString}
+                              </span>
+                              <span 
+                                className={`text-sm flex-1 ${
+                                  log.type === 'error' ? 'text-red-700' : 
+                                  log.type === 'success' ? 'text-green-700' : 
+                                  log.type === 'action' ? 'text-blue-700 font-medium' : 
+                                  'text-neutral-600'
+                                }`}
+                              >
+                                {log.message}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-neutral-400 text-sm">
+                        Waiting for agent activity...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Action Summary */}
               <div className="p-4 border-t border-neutral-200">
                 <p className="text-sm text-neutral-600 mb-3">
-                  <span className="font-semibold">Current Action:</span> {session.currentAction}
+                  <span className="font-semibold">Status:</span> {session.currentAction}
                 </p>
 
                 {/* Contractors Found */}
@@ -357,7 +389,7 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                           ({contractor.reviewCount})
                         </span>
                       </div>
-                      <Badge variant="secondary" size="sm" className="mt-1">
+                      <Badge variant="primary" size="sm">
                         {getPlatformName(contractor.platform)}
                       </Badge>
                     </div>
@@ -389,7 +421,9 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
         {/* Loading State */}
         {sessions.length === 0 && isSearching && (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <Spinner className="mx-auto mb-4" />
+            <div className="flex justify-center mb-4">
+              <Spinner />
+            </div>
             <h3 className="text-xl font-semibold text-neutral-800 mb-2">Initializing AI Search</h3>
             <p className="text-neutral-600">
               Setting up computer use sessions for TaskRabbit and Thumbtack...

@@ -610,6 +610,7 @@ async function searchPlatform(platform, sessionData) {
     currentAction: 'Setting up Browserbase session with Google Computer Use...',
     screenshot: null,
     contractors: [],
+    logs: [], // Initialize logs array
     error: null,
     startTime: new Date(),
   };
@@ -688,12 +689,16 @@ async function searchPlatform(platform, sessionData) {
       ? 'https://www.taskrabbit.com'
       : 'https://www.thumbtack.com';
     
+    addLog(session, `🌐 Navigating to ${url}`, 'info');
+    broadcastToClients(jobId, { type: 'session_update', session });
+    
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     
     updateSession(session, {
       progress: 25,
       currentAction: 'Website loaded, AI agent starting...',
     });
+    addLog(session, `✓ Successfully loaded ${platform === 'taskrabbit' ? 'TaskRabbit' : 'Thumbtack'}`, 'success');
     broadcastToClients(jobId, { type: 'session_update', session });
 
     // Step 2: Create Computer Use Agent for autonomous web browsing
@@ -702,6 +707,7 @@ async function searchPlatform(platform, sessionData) {
       progress: 35,
       currentAction: 'Initializing Gemini Computer Use Agent...',
     });
+    addLog(session, `🤖 Initializing Gemini 2.5 Computer Use Agent`, 'info');
     broadcastToClients(jobId, { type: 'session_update', session });
 
     const agent = stagehand.agent({
@@ -738,10 +744,14 @@ async function searchPlatform(platform, sessionData) {
       progress: 50,
       currentAction: 'AI agent is searching and extracting contractor information...',
     });
+    addLog(session, `🔍 Searching for ${category} contractors in zip code ${zipCode}`, 'action');
     broadcastToClients(jobId, { type: 'session_update', session });
 
     // Execute the agent with the instruction
     const instruction = `Search for ${category} contractors in zip code ${zipCode} and extract their information.`;
+    
+    addLog(session, `🎯 Agent executing: entering zip code, searching ${subcategory} services`, 'action');
+    broadcastToClients(jobId, { type: 'session_update', session });
     
     const result = await agent.execute({
       instruction: instruction,
@@ -754,6 +764,7 @@ async function searchPlatform(platform, sessionData) {
       progress: 70,
       currentAction: 'Processing AI agent results...',
     });
+    addLog(session, `📊 Agent completed ${result.steps || 0} steps, processing results...`, 'info');
     broadcastToClients(jobId, { type: 'session_update', session });
 
     console.log(`Agent execution result for ${platform}:`, result);
@@ -767,10 +778,17 @@ async function searchPlatform(platform, sessionData) {
         const jsonMatch = resultText.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
           contractors = JSON.parse(jsonMatch[0]);
+          addLog(session, `✓ Found ${contractors.length} contractor${contractors.length !== 1 ? 's' : ''}`, 'success');
+          broadcastToClients(jobId, { type: 'session_update', session });
         }
       } catch (e) {
         console.warn(`Failed to parse contractors from ${platform} agent result:`, e);
+        addLog(session, `⚠ Unable to parse contractor data from results`, 'error');
+        broadcastToClients(jobId, { type: 'session_update', session });
       }
+    } else {
+      addLog(session, `⚠ Agent execution did not complete successfully`, 'error');
+      broadcastToClients(jobId, { type: 'session_update', session });
     }
 
     console.log(`Extracted ${contractors.length} contractors from ${platform}`);
@@ -796,6 +814,7 @@ async function searchPlatform(platform, sessionData) {
       progress: 90,
       currentAction: `Extracted ${formattedContractors.length} contractors`,
     });
+    addLog(session, `📋 Processing ${formattedContractors.length} contractor profile${formattedContractors.length !== 1 ? 's' : ''}`, 'info');
     broadcastToClients(jobId, { 
       type: 'contractors_found',
       contractors: formattedContractors,
@@ -810,6 +829,7 @@ async function searchPlatform(platform, sessionData) {
       currentAction: `Search complete! Found ${formattedContractors.length} contractors`,
       endTime: new Date(),
     });
+    addLog(session, `✅ Search completed successfully - ${formattedContractors.length} contractor${formattedContractors.length !== 1 ? 's' : ''} ready for review`, 'success');
     
     console.log(`[${jobId}] Successfully completed ${platform.toUpperCase()} search - found ${formattedContractors.length} contractors`);
     broadcastToClients(jobId, { type: 'session_update', session });
@@ -824,11 +844,14 @@ async function searchPlatform(platform, sessionData) {
       currentAction: `Failed: ${error.message}`,
       endTime: new Date(),
     });
+    addLog(session, `❌ Error: ${error.message}`, 'error');
     broadcastToClients(jobId, { type: 'session_update', session });
   } finally {
     // Clean up browser session
     if (stagehand) {
       try {
+        addLog(session, `🔒 Closing browser session`, 'info');
+        broadcastToClients(jobId, { type: 'session_update', session });
         await stagehand.close();
         console.log(`[${jobId}] Closed Stagehand session for ${platform.toUpperCase()}`);
       } catch (e) {
@@ -839,8 +862,29 @@ async function searchPlatform(platform, sessionData) {
 }
 
 // Helper function to update session
-function updateSession(session, updates) {
+// Helper function to add a log entry to a session
+function addLog(session, message, type = 'info') {
+  if (!session.logs) {
+    session.logs = [];
+  }
+  session.logs.push({
+    timestamp: new Date(),
+    message,
+    type
+  });
+}
+
+// Update session with new values and optionally add a log
+function updateSession(session, updates, logMessage = null, logType = 'action') {
   Object.assign(session, updates);
+  
+  // If a log message is provided, add it to the logs
+  if (logMessage) {
+    addLog(session, logMessage, logType);
+  } else if (updates.currentAction) {
+    // Automatically log the current action
+    addLog(session, updates.currentAction, 'action');
+  }
 }
 
 // Health check endpoint
