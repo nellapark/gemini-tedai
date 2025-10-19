@@ -14,9 +14,14 @@ export const MediaPreviewCard: React.FC<MediaPreviewCardProps> = ({
   onAnnotate,
 }) => {
   const needsAnnotation = media.type === 'video' || media.type === 'image';
+  const missingAnnotation = needsAnnotation && !media.annotation;
 
   return (
-    <div className="border border-neutral-200 rounded-lg p-3">
+    <div className={`border-2 rounded-lg p-3 transition-colors ${
+      missingAnnotation 
+        ? 'border-red-500 bg-red-50' 
+        : 'border-neutral-200 bg-white'
+    }`}>
       <div className="flex gap-3">
         <div className="relative group flex-shrink-0">
           {media.type === 'video' && (
@@ -46,12 +51,14 @@ export const MediaPreviewCard: React.FC<MediaPreviewCardProps> = ({
               {media.annotation ? (
                 <p className="text-sm text-neutral-700 mb-1">{media.annotation}</p>
               ) : (
-                <p className="text-sm text-neutral-400 italic mb-1">No annotation yet</p>
+                <p className="text-sm text-red-600 font-medium mb-1">⚠️ Annotation required</p>
               )}
               <button
                 type="button"
                 onClick={onAnnotate}
-                className="text-xs text-primary hover:underline"
+                className={`text-xs hover:underline ${
+                  missingAnnotation ? 'text-red-600 font-semibold' : 'text-primary'
+                }`}
               >
                 {media.annotation ? 'Edit' : 'Add'} annotation
               </button>

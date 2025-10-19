@@ -135,9 +135,6 @@ export const AudioModal: React.FC<AudioModalProps> = ({
               <Button variant="danger" onClick={onStop}>
                 ⏹ Stop
               </Button>
-              <Button variant="secondary" onClick={onRestart}>
-                🔄 Restart
-              </Button>
             </>
           )}
 
