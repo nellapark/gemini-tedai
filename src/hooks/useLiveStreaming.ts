@@ -63,24 +63,29 @@ export const useLiveStreaming = (
     }
 
     try {
-      // Initialize WebSocket connection to Gemini Live API
-      // @ts-ignore - Vite env types
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-      
-      console.log('🔍 Checking API key...');
-      console.log('  - Has key:', !!apiKey);
-      console.log('  - Key length:', apiKey.length);
-      console.log('  - Key start:', apiKey ? apiKey.substring(0, 15) + '...' : 'N/A');
-      
-      if (!apiKey) {
-        console.error('❌ VITE_GEMINI_API_KEY is not set!');
-        console.error('📝 Add to your .env file:');
-        console.error('   VITE_GEMINI_API_KEY=your_api_key_here');
-        console.error('   (VITE_ prefix is REQUIRED for browser access)');
-        console.error('   Then restart: npm run dev');
-        setError('API key missing. Add VITE_GEMINI_API_KEY to .env and restart dev server.');
-        return;
-      }
+          // Initialize WebSocket connection to Gemini Live API
+          // Get API key from runtime config (production) or Vite env (development)
+          // @ts-ignore - Runtime config
+          const runtimeKey = typeof window !== 'undefined' && window.__ENV__?.VITE_GEMINI_API_KEY;
+          // @ts-ignore - Vite env types
+          const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
+          const apiKey = runtimeKey || viteKey || '';
+          
+          console.log('🔍 Checking API key...');
+          console.log('  - Has key:', !!apiKey);
+          console.log('  - Key length:', apiKey.length);
+          console.log('  - Key start:', apiKey ? apiKey.substring(0, 15) + '...' : 'N/A');
+          console.log('  - Source:', runtimeKey ? 'runtime config' : viteKey ? 'vite env' : 'none');
+          
+          if (!apiKey) {
+            console.error('❌ API key is not set!');
+            console.error('📝 For local development, add to your .env file:');
+            console.error('   VITE_GEMINI_API_KEY=your_api_key_here');
+            console.error('   Then restart: npm run dev');
+            console.error('📝 For production, ensure GEMINI_API_KEY is set in Cloud Run');
+            setError('API key missing. Check console for setup instructions.');
+            return;
+          }
       
       console.log('🔑 API key found:', apiKey.substring(0, 10) + '...');
       
