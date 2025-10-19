@@ -9,7 +9,7 @@ import { MediaUploadSection } from './components/organisms/MediaUploadSection';
 import { MediaPreviewList } from './components/organisms/MediaPreviewList';
 import { AudioRecordingSection } from './components/organisms/AudioRecordingSection';
 import { AnalysisResultCard } from './components/organisms/AnalysisResultCard';
-import { useMediaCapture } from './hooks/useMediaCapture';
+import { AudioModal } from './components/molecules/AudioModal';
 import { useAudioRecording } from './hooks/useAudioRecording';
 import { MediaFile, AnalysisResult, InputMode } from './types';
 
@@ -24,7 +24,6 @@ function App() {
   const [editingAnnotation, setEditingAnnotation] = useState<number | null>(null);
   const [tempAnnotation, setTempAnnotation] = useState('');
 
-  const mediaCapture = useMediaCapture(mediaFiles, setMediaFiles, setError, inputMode, setInputMode);
   const audioRecording = useAudioRecording(mediaFiles, setMediaFiles, setError, inputMode, setInputMode);
 
   const startLiveStreaming = async () => {
@@ -192,15 +191,8 @@ function App() {
             <MediaUploadSection
               inputMode={inputMode}
               isAnalyzing={isAnalyzing}
-              isCapturingMedia={mediaCapture.isCapturingMedia}
-              isRecording={mediaCapture.mediaRecorderRef.current?.state === 'recording'}
-              videoRef={mediaCapture.videoRef}
               onVideoUpload={(e) => handleFileUpload(e, 'video')}
-              onVideoRecord={() => mediaCapture.startMediaCapture('video')}
               onPhotoUpload={(e) => handleFileUpload(e, 'image')}
-              onPhotoCapture={() => mediaCapture.startMediaCapture('photo')}
-              onCapturePhoto={mediaCapture.capturePhoto}
-              onStopCapture={mediaCapture.stopMediaCapture}
             />
 
             <MediaPreviewList
@@ -234,11 +226,9 @@ function App() {
             </div>
 
             <AudioRecordingSection
-              isRecording={audioRecording.isRecordingAudio}
               inputMode={inputMode}
               isAnalyzing={isAnalyzing}
               onStart={audioRecording.startAudioRecording}
-              onStop={audioRecording.stopAudioRecording}
             />
 
             {error && <ErrorMessage message={error} />}
@@ -270,6 +260,14 @@ function App() {
           <p>Powered by Google Gemini AI • Your data is secure and private</p>
         </div>
       </div>
+
+      {/* Modals */}
+      <AudioModal
+        isOpen={audioRecording.showAudioModal}
+        onClose={audioRecording.closeAudioModal}
+        isRecording={audioRecording.isRecordingAudio}
+        onStop={audioRecording.stopAudioRecording}
+      />
     </div>
   );
 }
