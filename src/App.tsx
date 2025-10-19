@@ -199,6 +199,7 @@ function App() {
     return (
       <AnalysisResultCard
         result={analysisResult}
+        mediaFiles={mediaFiles}
         onStartNew={startNew}
         onRequestQuotes={() => alert('Quote request feature coming soon!')}
       />

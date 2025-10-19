@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import { CheckCircleIcon } from '../Icons';
 import { Badge } from '../atoms/Badge';
 import { Button } from '../atoms/Button';
-import { AnalysisResult } from '../../types';
+import { AnalysisResult, MediaFile } from '../../types';
+import { generateScopeOfWorkPDF } from '../../utils/pdfGenerator';
 
 interface AnalysisResultCardProps {
   result: AnalysisResult;
+  mediaFiles: MediaFile[];
   onStartNew: () => void;
   onRequestQuotes: () => void;
 }
 
 export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({
   result,
+  mediaFiles,
   onStartNew,
   onRequestQuotes,
 }) => {
@@ -22,6 +25,7 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({
     measurements: false,
     recommendations: true,
   });
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -51,6 +55,61 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({
       case 'Recommended': return 'text-orange-600 bg-orange-50';
       case 'Optional': return 'text-blue-600 bg-blue-50';
       default: return 'text-neutral-600 bg-neutral-50';
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      setIsGeneratingPDF(true);
+
+      // Get image and video files for annotation
+      const imageFiles = mediaFiles.filter(f => f.type === 'image' || f.type === 'video');
+      
+      let annotatedImages: Array<{ url: string; annotation: string }> = [];
+
+      if (imageFiles.length > 0) {
+        // Send images to backend for Gemini Vision annotation
+        const formData = new FormData();
+        imageFiles.forEach(media => {
+          formData.append('images', media.file);
+        });
+        
+        // Create context from analysis result
+        const context = `${result.category} - ${result.subcategory || ''}\n${result.problemSummary}\n${result.detailedDescription || ''}`;
+        formData.append('analysisContext', context);
+
+        const response = await fetch('/api/annotate-images', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          annotatedImages = data.annotatedImages;
+        } else {
+          console.error('Failed to annotate images');
+          // Continue with PDF generation without annotations
+        }
+      }
+
+      // Generate PDF
+      const pdfBlob = await generateScopeOfWorkPDF(result, annotatedImages);
+
+      // Download PDF
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `scope-of-work-${result.category.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -366,17 +425,43 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({
           )}
 
           {/* Action Buttons */}
-          <div className="mt-8 flex gap-4 pt-6 border-t-2 border-neutral-200">
-            <Button variant="secondary" fullWidth onClick={onStartNew}>
-              ← Start New Job
+          <div className="mt-8 space-y-4 pt-6 border-t-2 border-neutral-200">
+            {/* Download PDF Button - Prominent */}
+            <Button 
+              variant="success" 
+              fullWidth 
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPDF}
+              className="py-4 text-lg font-semibold"
+            >
+              {isGeneratingPDF ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating PDF with AI Annotations...
+                </>
+              ) : (
+                <>
+                  📄 Download Detailed Scope of Work PDF
+                </>
+              )}
             </Button>
-            <Button variant="primary" fullWidth onClick={onRequestQuotes}>
-              Request Quotes from Contractors →
-            </Button>
+
+            {/* Other Action Buttons */}
+            <div className="flex gap-4">
+              <Button variant="secondary" fullWidth onClick={onStartNew}>
+                ← Start New Job
+              </Button>
+              <Button variant="primary" fullWidth onClick={onRequestQuotes}>
+                Request Quotes from Contractors →
+              </Button>
+            </div>
           </div>
 
           <p className="text-xs text-neutral-500 text-center mt-4">
-            This professional scope of work will be sent to qualified contractors for accurate quotes
+            Download includes professionally formatted scope of work with AI-annotated images, measurements, and detailed descriptions
           </p>
         </div>
       </div>

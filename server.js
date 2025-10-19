@@ -286,6 +286,79 @@ Remember: This document will be sent directly to contractors. Make it comprehens
   }
 });
 
+// API endpoint for annotating images with Gemini Vision
+app.post('/api/annotate-images', upload.array('images', 10), async (req, res) => {
+  try {
+    const files = req.files;
+    const analysisContext = req.body.analysisContext || '';
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No image files provided' });
+    }
+
+    console.log(`Annotating ${files.length} images with Gemini Vision`);
+
+    const annotatedImages = [];
+
+    // Use Gemini Vision to annotate each image
+    const visionModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+    for (const file of files) {
+      const imagePart = await fileToGenerativePart(file.path, file.mimetype);
+      
+      const prompt = `You are analyzing an image for a home repair scope of work document. 
+      
+Context: ${analysisContext}
+
+Analyze this image and provide:
+1. What you see in the image
+2. Key measurements or dimensions if visible
+3. Important details a contractor should note
+4. Any safety concerns visible
+5. Recommendations for the repair
+
+Be specific, technical, and concise. This annotation will be included in a professional PDF document.`;
+
+      const result = await visionModel.generateContent([
+        prompt,
+        imagePart
+      ]);
+
+      const annotation = result.response.text();
+      
+      // Convert image to base64 for PDF embedding
+      const imageData = await fs.readFile(file.path);
+      const base64Image = `data:${file.mimetype};base64,${imageData.toString('base64')}`;
+
+      annotatedImages.push({
+        url: base64Image,
+        annotation: annotation
+      });
+
+      // Clean up uploaded file
+      await fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+    }
+
+    console.log(`Successfully annotated ${annotatedImages.length} images`);
+    res.json({ annotatedImages });
+
+  } catch (error) {
+    console.error('Error annotating images:', error);
+    
+    // Clean up files on error
+    if (req.files) {
+      for (const file of req.files) {
+        await fs.unlink(file.path).catch(() => {});
+      }
+    }
+
+    res.status(500).json({ 
+      error: 'Failed to annotate images',
+      message: error.message 
+    });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
