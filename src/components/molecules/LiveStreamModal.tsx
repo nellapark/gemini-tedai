@@ -176,7 +176,15 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({
         {/* Control Buttons */}
         <div className="flex flex-wrap gap-2 justify-center border-t border-neutral-200 pt-4">
           {(streamState === 'idle' || (streamState === 'stopped' && !selectedSession)) && (
-            <Button variant="success" onClick={onStart} className="px-6">
+            <Button 
+              variant="success" 
+              onClick={() => {
+                console.log('🔘 Begin Streaming button clicked!');
+                console.log('Stream state:', streamState);
+                onStart();
+              }} 
+              className="px-6"
+            >
               <VideoIcon className="w-4 h-4 mr-2" />
               Begin Streaming
             </Button>

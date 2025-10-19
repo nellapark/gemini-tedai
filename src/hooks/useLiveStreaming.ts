@@ -16,10 +16,12 @@ export const useLiveStreaming = (
   const wsRef = useRef<WebSocket | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioRecorderRef = useRef<MediaRecorder | null>(null);
   const videoChunksRef = useRef<Blob[]>([]);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const streamStartTimeRef = useRef<number>(0);
   const currentSessionIdRef = useRef<string>('');
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const openLiveModal = async () => {
     try {
@@ -38,12 +40,39 @@ export const useLiveStreaming = (
   };
 
   const startStreaming = async () => {
-    if (!mediaStream) return;
+    console.log('🚀 startStreaming called!');
+    console.log('Media stream available:', !!mediaStream);
+    
+    if (!mediaStream) {
+      console.error('❌ No media stream available!');
+      setError('Camera/microphone not initialized. Please close and reopen the modal.');
+      return;
+    }
 
     try {
       // Initialize WebSocket connection to Gemini Live API
+      // @ts-ignore - Vite env types
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+      
+      console.log('🔍 Checking API key...');
+      console.log('  - Has key:', !!apiKey);
+      console.log('  - Key length:', apiKey.length);
+      console.log('  - Key start:', apiKey ? apiKey.substring(0, 15) + '...' : 'N/A');
+      
+      if (!apiKey) {
+        console.error('❌ VITE_GEMINI_API_KEY is not set!');
+        console.error('📝 Add to your .env file:');
+        console.error('   VITE_GEMINI_API_KEY=your_api_key_here');
+        console.error('   (VITE_ prefix is REQUIRED for browser access)');
+        console.error('   Then restart: npm run dev');
+        setError('API key missing. Add VITE_GEMINI_API_KEY to .env and restart dev server.');
+        return;
+      }
+      
+      console.log('🔑 API key found:', apiKey.substring(0, 10) + '...');
+      
       const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+      console.log('🔗 Connecting to:', wsUrl.replace(apiKey, 'API_KEY_HIDDEN'));
       
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -52,55 +81,130 @@ export const useLiveStreaming = (
 
       // Setup WebSocket handlers
       ws.onopen = () => {
-        console.log('WebSocket connected to Gemini Live API');
+        console.log('✅ WebSocket connected to Gemini Live API');
         
-        // Send initial setup message
+        // Send initial setup message for Gemini 2.0 Flash Experimental (supports Live API)
         const setupMessage = {
           setup: {
             model: 'models/gemini-2.0-flash-exp',
             generation_config: {
-              response_modalities: ['AUDIO'],
+              response_modalities: ['TEXT'],
+              temperature: 0.7,
             },
             system_instruction: {
               parts: [{
-                text: 'You are an AI assistant helping users analyze home repair issues. Provide helpful feedback and ask clarifying questions about what you see in the video feed.'
+                text: 'You are an AI assistant helping users with home repair issues. When they show you their problem via video and describe it with audio, provide helpful real-time feedback. Ask clarifying questions and help them understand what needs to be fixed. Be conversational, helpful, and responsive. Always acknowledge what you see and hear.'
               }]
             }
           }
         };
+        
+        console.log('📤 Sending setup message:', JSON.stringify(setupMessage, null, 2));
         ws.send(JSON.stringify(setupMessage));
+        
+        // Start streaming audio after a short delay to ensure setup is complete
+        setTimeout(() => {
+          startAudioStreaming(ws);
+        }, 500);
       };
 
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         try {
-          const data = JSON.parse(event.data);
+          // Check if message is binary (Blob) or text (JSON)
+          if (event.data instanceof Blob) {
+            console.log('📦 Received binary data (Blob):', event.data.size, 'bytes');
+            
+            // Convert Blob to text and parse as JSON
+            const text = await event.data.text();
+            console.log('📄 Blob text content:', text.substring(0, 200) + '...');
+            
+            try {
+              const data = JSON.parse(text);
+              handleJsonMessage(data);
+            } catch (parseErr) {
+              console.error('❌ Could not parse Blob as JSON:', parseErr);
+              console.log('Raw text:', text);
+            }
+          } else {
+            // Direct JSON string
+            const data = JSON.parse(event.data);
+            handleJsonMessage(data);
+          }
+        } catch (err) {
+          console.error('❌ Error handling WebSocket message:', err);
+          console.error('Event data type:', typeof event.data);
+          console.error('Event data:', event.data);
+        }
+      };
+      
+      const handleJsonMessage = (data: any) => {
+        console.log('📥 Received from Gemini:', JSON.stringify(data, null, 2));
+        
+        // Handle setup complete
+        if (data.setupComplete) {
+          console.log('✅ Gemini setup complete!');
+        }
+        
+        // Handle server content - this is where AI responses come
+        if (data.serverContent) {
+          console.log('🤖 Server content received:', data.serverContent);
           
-          // Handle server text response
-          if (data.serverContent?.modelTurn?.parts) {
-            data.serverContent.modelTurn.parts.forEach((part: any) => {
+          const modelTurn = data.serverContent.modelTurn;
+          const turnComplete = data.serverContent.turnComplete;
+          
+          if (modelTurn?.parts) {
+            console.log('📝 Model turn parts:', modelTurn.parts);
+            
+            modelTurn.parts.forEach((part: any) => {
+              // Handle text responses
               if (part.text) {
+                console.log('💬 AI text response:', part.text);
                 const entry: TranscriptEntry = {
                   id: `ai-${Date.now()}-${Math.random()}`,
                   text: part.text,
                   speaker: 'ai',
                   timestamp: Date.now(),
                 };
-                setCurrentTranscript(prev => [...prev, entry]);
+                setCurrentTranscript(prev => {
+                  console.log('Updating transcript with:', entry);
+                  return [...prev, entry];
+                });
+              }
+              
+              // Handle inline data (could be audio or images)
+              if (part.inlineData) {
+                console.log('📦 Received inline data, mimeType:', part.inlineData.mimeType);
               }
             });
           }
-        } catch (err) {
-          console.error('Error parsing WebSocket message:', err);
+          
+          if (turnComplete) {
+            console.log('✅ Turn complete');
+          }
+        }
+        
+        // Handle tool calls
+        if (data.toolCall) {
+          console.log('🔧 Tool call:', data.toolCall);
+        }
+        
+        // Handle errors from server
+        if (data.error) {
+          console.error('❌ Server error:', data.error);
+          setError(`Gemini API Error: ${data.error.message || 'Unknown error'}`);
         }
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setError('Connection error with Gemini Live API');
+        console.error('❌ WebSocket error:', error);
+        setError('Connection error with Gemini Live API. Check your API key and internet connection.');
       };
 
-      ws.onclose = () => {
-        console.log('WebSocket connection closed');
+      ws.onclose = (event) => {
+        console.log('🔌 WebSocket connection closed:', event.code, event.reason);
+        if (event.code !== 1000) {
+          console.error('Abnormal closure:', event);
+        }
       };
 
       // Start recording video for playback
@@ -135,6 +239,77 @@ export const useLiveStreaming = (
     }
   };
 
+  const startAudioStreaming = (ws: WebSocket) => {
+    if (!mediaStream) {
+      console.error('❌ No media stream available for audio');
+      return;
+    }
+
+    try {
+      console.log('🎤 Starting audio streaming...');
+      
+      // Create audio context for processing
+      const audioContext = new AudioContext({ sampleRate: 16000 });
+      audioContextRef.current = audioContext;
+      
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      
+      let chunkCount = 0;
+      
+      processor.onaudioprocess = (e) => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          if (chunkCount === 0) {
+            console.error('❌ WebSocket not open when trying to send audio');
+          }
+          return;
+        }
+        
+        const inputData = e.inputBuffer.getChannelData(0);
+        
+        // Convert float32 audio to PCM16
+        const pcm16 = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        
+        // Convert to base64
+        const base64 = btoa(
+          String.fromCharCode.apply(null, Array.from(new Uint8Array(pcm16.buffer)))
+        );
+        
+        // Send audio chunk to Gemini
+        const message = {
+          realtimeInput: {
+            mediaChunks: [{
+              mimeType: 'audio/pcm;rate=16000',
+              data: base64
+            }]
+          }
+        };
+        
+        try {
+          ws.send(JSON.stringify(message));
+          chunkCount++;
+          if (chunkCount === 1 || chunkCount % 50 === 0) {
+            console.log(`🎵 Audio chunk #${chunkCount} sent (${pcm16.length} samples)`);
+          }
+        } catch (err) {
+          console.error('❌ Error sending audio chunk:', err);
+        }
+      };
+      
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+      
+      console.log('✅ Audio streaming started successfully');
+    } catch (err) {
+      console.error('❌ Error starting audio stream:', err);
+      setError('Failed to start audio streaming');
+    }
+  };
+
   const startVideoCapture = (ws: WebSocket) => {
     if (!videoRef.current) return;
 
@@ -164,18 +339,29 @@ export const useLiveStreaming = (
                 }]
               }
             };
-            ws.send(JSON.stringify(message));
+            
+            try {
+              ws.send(JSON.stringify(message));
+              console.log('📹 Video frame sent');
+            } catch (err) {
+              console.error('❌ Error sending video frame:', err);
+            }
           });
         }
-      }, 'image/jpeg', 0.7);
+      }, 'image/jpeg', 0.5);
 
-      // Capture next frame (every 1 second to avoid overwhelming the API)
+      // Capture next frame (every 2 seconds to avoid overwhelming the API)
       if (streamState === 'streaming') {
-        setTimeout(captureFrame, 1000);
+        setTimeout(captureFrame, 2000);
       }
     };
 
-    captureFrame();
+    // Wait a bit before starting video capture to let audio streaming start
+    setTimeout(() => {
+      console.log('📹 Starting video capture...');
+      captureFrame();
+      console.log('✅ Video capture started successfully');
+    }, 1500);
   };
 
   const stopStreaming = () => {
@@ -249,6 +435,11 @@ export const useLiveStreaming = (
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
+    }
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
