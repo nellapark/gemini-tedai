@@ -1108,6 +1108,86 @@ function updateSession(session, updates, logMessage = null, logType = 'action') 
   }
 }
 
+// Generate comparison graphic using Gemini
+app.post('/api/generate-comparison-graphic', async (req, res) => {
+  try {
+    const { contractors, platform } = req.body;
+
+    if (!contractors || !Array.isArray(contractors) || contractors.length === 0) {
+      return res.status(400).json({ error: 'Contractors data is required' });
+    }
+
+    console.log(`Generating comparison graphic for ${platform} with ${contractors.length} contractors`);
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+    // Create a detailed prompt for generating SVG comparison graphic
+    const contractorDetails = contractors.map((c, i) => `
+Contractor ${i + 1}:
+- Name: ${c.name}
+- Rating: ${c.rating}⭐ (${c.reviewCount} reviews)
+- Price: ${c.price || 'Contact for quote'}
+- Experience: ${c.yearsOfExperience} years
+- Top Rated: ${c.isTopRated ? 'Yes' : 'No'}
+- Specialties: ${c.specialties.join(', ')}
+- Profile Image: ${c.profileImage}
+- Good Reviews: ${c.goodReviews.length}
+- Bad Reviews: ${c.badReviews.length}
+`).join('\n');
+
+    const prompt = `Create a playful, animated SVG graphic (800px wide, 600px tall) comparing these ${contractors.length} contractors from ${platform === 'taskrabbit' ? 'TaskRabbit' : 'Thumbtack'}.
+
+${contractorDetails}
+
+Requirements:
+1. Create a modern, playful design with vibrant colors
+2. Include animated elements using CSS animations (floating, pulsing, sliding)
+3. Show each contractor with their profile image (use the profileImage URL in <image> tags)
+4. Display key info: name, rating (stars), price, and top specialty
+5. Use a comparison layout (side-by-side or cards)
+6. Add animated badges for "Top Rated", "Budget Friendly", "Premium Quality"
+7. Include animated star ratings
+8. Use gradients, shadows, and modern UI design
+9. Make profile images circular with animated borders
+10. Add subtle animations to make it engaging
+11. Use the ${platform === 'taskrabbit' ? 'TaskRabbit brand colors (teal/green)' : 'Thumbtack brand colors (blue/purple)'}
+12. Include platform logo or name at the top
+
+Return ONLY the complete SVG code with embedded CSS animations. Make it fun and eye-catching!`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    let svgCode = response.text();
+
+    // Extract SVG from markdown code blocks if present
+    if (svgCode.includes('```')) {
+      const svgMatch = svgCode.match(/```(?:svg|html)?\n([\s\S]*?)```/);
+      if (svgMatch) {
+        svgCode = svgMatch[1];
+      }
+    }
+
+    // Clean up the SVG code
+    svgCode = svgCode.trim();
+
+    console.log(`Generated SVG graphic for ${platform} (${svgCode.length} characters)`);
+
+    res.json({
+      success: true,
+      platform,
+      svgCode,
+    });
+
+  } catch (error) {
+    console.error('Error generating comparison graphic:', error);
+    res.status(500).json({
+      error: 'Failed to generate comparison graphic',
+      details: error.message,
+    });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

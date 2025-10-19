@@ -23,6 +23,9 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [taskrabbitGraphic, setTaskrabbitGraphic] = useState<string | null>(null);
+  const [thumbtackGraphic, setThumbtackGraphic] = useState<string | null>(null);
+  const [isGeneratingGraphics, setIsGeneratingGraphics] = useState(false);
   
   const contractorsRef = useRef<HTMLDivElement>(null);
 
@@ -215,10 +218,57 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
       setTimeout(() => {
         contractorsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 500);
+
+      // Generate comparison graphics
+      generateComparisonGraphics(formattedTaskRabbit, formattedThumbtack);
     } catch (error) {
       console.error('Error loading demo data:', error);
       setError('Failed to load demo data');
       setIsSearching(false);
+    }
+  };
+
+  const generateComparisonGraphics = async (taskrabbitContractors: any[], thumbtackContractors: any[]) => {
+    console.log('Generating comparison graphics...');
+    setIsGeneratingGraphics(true);
+
+    try {
+      // Generate TaskRabbit graphic
+      const taskrabbitResponse = await fetch('/api/generate-comparison-graphic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractors: taskrabbitContractors,
+          platform: 'taskrabbit',
+        }),
+      });
+
+      if (taskrabbitResponse.ok) {
+        const taskrabbitData = await taskrabbitResponse.json();
+        setTaskrabbitGraphic(taskrabbitData.svgCode);
+        console.log('TaskRabbit graphic generated');
+      }
+
+      // Generate Thumbtack graphic
+      const thumbtackResponse = await fetch('/api/generate-comparison-graphic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractors: thumbtackContractors,
+          platform: 'thumbtack',
+        }),
+      });
+
+      if (thumbtackResponse.ok) {
+        const thumbtackData = await thumbtackResponse.json();
+        setThumbtackGraphic(thumbtackData.svgCode);
+        console.log('Thumbtack graphic generated');
+      }
+
+      setIsGeneratingGraphics(false);
+    } catch (error) {
+      console.error('Error generating graphics:', error);
+      setIsGeneratingGraphics(false);
     }
   };
 
@@ -561,6 +611,69 @@ export const QuoteDashboard: React.FC<QuoteDashboardProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* AI-Generated Comparison Graphics */}
+            {isDemoMode && (taskrabbitGraphic || thumbtackGraphic || isGeneratingGraphics) && (
+              <div className="mb-8 space-y-6 animate-fadeInSlideUp">
+                <div className="text-center mb-4">
+                  <h2 className="text-2xl font-bold text-neutral-800 mb-2 flex items-center justify-center">
+                    <span className="mr-3 text-3xl">🎨</span>
+                    AI-Generated Comparison Graphics
+                  </h2>
+                  <p className="text-sm text-neutral-600">
+                    Powered by Gemini 2.0 Flash • Playful visual comparison of contractors
+                  </p>
+                </div>
+
+                {isGeneratingGraphics && (
+                  <div className="bg-white rounded-2xl shadow-lg p-12 text-center border-2 border-purple-200">
+                    <div className="flex justify-center mb-4">
+                      <Spinner />
+                    </div>
+                    <h3 className="text-xl font-semibold text-neutral-800 mb-2">
+                      🤖 Generating Playful Comparison Graphics...
+                    </h3>
+                    <p className="text-neutral-600">
+                      Gemini is creating animated visuals for both platforms
+                    </p>
+                  </div>
+                )}
+
+                {/* TaskRabbit Graphic */}
+                {taskrabbitGraphic && (
+                  <div className="bg-gradient-to-br from-teal-50 to-green-50 rounded-2xl shadow-lg p-6 border-2 border-teal-300 animate-fadeIn">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-bold text-teal-800 flex items-center">
+                        <span className="mr-2">🛠️</span>
+                        TaskRabbit Comparison
+                      </h3>
+                      <Badge variant="success">AI Generated</Badge>
+                    </div>
+                    <div 
+                      className="bg-white rounded-xl p-4 overflow-auto"
+                      dangerouslySetInnerHTML={{ __html: taskrabbitGraphic }}
+                    />
+                  </div>
+                )}
+
+                {/* Thumbtack Graphic */}
+                {thumbtackGraphic && (
+                  <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl shadow-lg p-6 border-2 border-blue-300 animate-fadeIn">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-bold text-blue-800 flex items-center">
+                        <span className="mr-2">👍</span>
+                        Thumbtack Comparison
+                      </h3>
+                      <Badge variant="primary">AI Generated</Badge>
+                    </div>
+                    <div 
+                      className="bg-white rounded-xl p-4 overflow-auto"
+                      dangerouslySetInnerHTML={{ __html: thumbtackGraphic }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* All Contractors Summary */}
             <div 
