@@ -41,7 +41,22 @@ export const MediaPreviewList: React.FC<MediaPreviewListProps> = ({
                   missingAnnotation ? 'border-red-500 bg-red-50' : 'border-neutral-200 bg-white'
                 }`}>
                   <div className="flex gap-3">
-                    <div className="w-24 h-24 flex-shrink-0 bg-neutral-100 rounded-lg" />
+                    {/* Show image/video preview */}
+                    <div className="w-24 h-24 flex-shrink-0 bg-neutral-100 rounded-lg overflow-hidden">
+                      {media.type === 'image' && media.preview && (
+                        <img 
+                          src={media.preview} 
+                          alt={media.file.name}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                      {media.type === 'video' && media.preview && (
+                        <video 
+                          src={media.preview}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
                     <div className="flex-1">
                       <p className="text-xs text-neutral-500 mb-2 truncate">{media.file.name}</p>
                       <AnnotationEditor

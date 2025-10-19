@@ -382,7 +382,7 @@ app.post('/api/annotate-images', upload.array('images', 10), async (req, res) =>
     const annotatedImages = [];
 
     // Use Gemini Vision to annotate each image
-    const visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
+    const visionModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
     for (const file of files) {
       const imagePart = await fileToGenerativePart(file.path, file.mimetype);
@@ -444,6 +444,246 @@ IMPORTANT: Use ONLY standard English characters (A-Z, a-z, 0-9, basic punctuatio
     });
   }
 });
+
+// Store for active quote search sessions
+const quoteSessions = new Map();
+
+// API endpoint for requesting quotes using computer use
+app.post('/api/request-quotes', async (req, res) => {
+  try {
+    const { jobId, zipCode, category, subcategory, problemSummary, scopeOfWork } = req.body;
+
+    if (!jobId || !zipCode) {
+      return res.status(400).json({ error: 'Job ID and zip code are required' });
+    }
+
+    console.log(`Starting quote search for job ${jobId} in zip code ${zipCode}`);
+
+    // Initialize session storage
+    const sessionData = {
+      jobId,
+      zipCode,
+      category,
+      subcategory,
+      problemSummary,
+      scopeOfWork,
+      sessions: [],
+      contractors: [],
+      clients: new Set(),
+    };
+    quoteSessions.set(jobId, sessionData);
+
+    // Start quote search asynchronously
+    searchContractorsWithComputerUse(sessionData);
+
+    res.json({ success: true, jobId });
+  } catch (error) {
+    console.error('Error starting quote search:', error);
+    res.status(500).json({ 
+      error: 'Failed to start quote search',
+      message: error.message 
+    });
+  }
+});
+
+// SSE endpoint for real-time quote progress updates
+app.get('/api/quote-progress/:jobId', (req, res) => {
+  const { jobId } = req.params;
+  
+  console.log(`SSE connection established for job ${jobId}`);
+  
+  // Set up SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sessionData = quoteSessions.get(jobId);
+  if (!sessionData) {
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'Session not found' })}\n\n`);
+    res.end();
+    return;
+  }
+
+  // Add client to session
+  sessionData.clients.add(res);
+
+  // Send initial state
+  if (sessionData.sessions.length > 0) {
+    sessionData.sessions.forEach(session => {
+      res.write(`data: ${JSON.stringify({ type: 'session_update', session })}\n\n`);
+    });
+  }
+
+  // Handle client disconnect
+  req.on('close', () => {
+    console.log(`SSE connection closed for job ${jobId}`);
+    sessionData.clients.delete(res);
+  });
+});
+
+// Broadcast update to all connected clients
+function broadcastToClients(jobId, data) {
+  const sessionData = quoteSessions.get(jobId);
+  if (sessionData && sessionData.clients) {
+    sessionData.clients.forEach(client => {
+      try {
+        client.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch (error) {
+        console.error('Error broadcasting to client:', error);
+      }
+    });
+  }
+}
+
+// Main function to search contractors using computer use
+async function searchContractorsWithComputerUse(sessionData) {
+  const { jobId, zipCode, category, subcategory, problemSummary } = sessionData;
+  
+  // Create sessions for both platforms
+  const platforms = ['taskrabbit', 'thumbtack'];
+  
+  // Run searches in parallel
+  const searchPromises = platforms.map(platform => 
+    searchPlatform(platform, sessionData)
+  );
+
+  try {
+    await Promise.all(searchPromises);
+    
+    // Broadcast completion
+    broadcastToClients(jobId, { 
+      type: 'complete',
+      totalContractors: sessionData.contractors.length 
+    });
+  } catch (error) {
+    console.error('Error in quote search:', error);
+    broadcastToClients(jobId, { 
+      type: 'error',
+      message: error.message 
+    });
+  }
+}
+
+// Search a specific platform using Gemini computer use
+async function searchPlatform(platform, sessionData) {
+  const { jobId, zipCode, category } = sessionData;
+  const sessionId = `${platform}-${Date.now()}`;
+  
+  // Initialize session state
+  const session = {
+    id: sessionId,
+    platform,
+    status: 'initializing',
+    progress: 0,
+    currentAction: 'Setting up browser automation...',
+    screenshot: null,
+    contractors: [],
+    error: null,
+    startTime: new Date(),
+  };
+  
+  sessionData.sessions.push(session);
+  broadcastToClients(jobId, { type: 'session_update', session });
+
+  try {
+    // Update status to navigating
+    updateSession(session, {
+      status: 'navigating',
+      progress: 10,
+      currentAction: `Navigating to ${platform === 'taskrabbit' ? 'TaskRabbit.com' : 'Thumbtack.com'}...`,
+    });
+    broadcastToClients(jobId, { type: 'session_update', session });
+
+    // Initialize Gemini with computer use
+    const computerUseModel = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
+    });
+
+    // Simulate navigation (in production, this would use actual computer use API)
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    updateSession(session, {
+      status: 'searching',
+      progress: 30,
+      currentAction: `Searching for ${category} contractors in zip code ${zipCode}...`,
+    });
+    broadcastToClients(jobId, { type: 'session_update', session });
+
+    // Generate mock contractor data (in production, this would come from actual web scraping)
+    const mockContractors = await generateMockContractors(platform, category, zipCode);
+    
+    // Add contractors to session
+    session.contractors = mockContractors;
+    sessionData.contractors.push(...mockContractors);
+    
+    updateSession(session, {
+      status: 'extracting',
+      progress: 70,
+      currentAction: `Extracting contractor information... Found ${mockContractors.length} contractors`,
+    });
+    broadcastToClients(jobId, { type: 'session_update', session });
+    
+    // Broadcast contractors found
+    broadcastToClients(jobId, { 
+      type: 'contractors_found',
+      contractors: mockContractors,
+      platform 
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Complete session
+    updateSession(session, {
+      status: 'completed',
+      progress: 100,
+      currentAction: `Search complete! Found ${mockContractors.length} contractors`,
+      endTime: new Date(),
+    });
+    broadcastToClients(jobId, { type: 'session_update', session });
+
+  } catch (error) {
+    console.error(`Error searching ${platform}:`, error);
+    updateSession(session, {
+      status: 'error',
+      error: error.message,
+      currentAction: `Error: ${error.message}`,
+    });
+    broadcastToClients(jobId, { type: 'session_update', session });
+  }
+}
+
+// Helper function to update session
+function updateSession(session, updates) {
+  Object.assign(session, updates);
+}
+
+// Generate mock contractors (replace with actual web scraping in production)
+async function generateMockContractors(platform, category, zipCode) {
+  const contractors = [];
+  const count = Math.floor(Math.random() * 4) + 3; // 3-6 contractors
+
+  for (let i = 0; i < count; i++) {
+    const rating = (Math.random() * 1.5 + 3.5).toFixed(1); // 3.5-5.0
+    const reviewCount = Math.floor(Math.random() * 200) + 10;
+    const price = Math.floor(Math.random() * 200) + 100;
+    
+    contractors.push({
+      id: `${platform}-${Date.now()}-${i}`,
+      name: `${category} Pro ${i + 1}`,
+      rating: parseFloat(rating),
+      reviewCount,
+      price: `$${price}-$${price + 150}`,
+      description: `Professional ${category.toLowerCase()} services with ${Math.floor(Math.random() * 15) + 5} years experience. Licensed and insured.`,
+      profileUrl: `https://${platform}.com/contractor-${i}`,
+      availability: 'Available this week',
+      platform,
+      profileImage: `https://i.pravatar.cc/150?img=${i + 1}`,
+    });
+  }
+
+  return contractors;
+}
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

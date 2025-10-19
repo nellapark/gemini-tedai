@@ -11,6 +11,7 @@ import { AudioRecordingSection } from './components/organisms/AudioRecordingSect
 import { AnalysisResultCard } from './components/organisms/AnalysisResultCard';
 import { AudioModal } from './components/molecules/AudioModal';
 import { LiveStreamModal } from './components/molecules/LiveStreamModal';
+import { QuoteDashboard } from './components/pages/QuoteDashboard';
 import { useAudioRecording } from './hooks/useAudioRecording';
 import { useLiveStreaming } from './hooks/useLiveStreaming';
 import { MediaFile, AnalysisResult, InputMode, LiveStreamSession } from './types';
@@ -19,12 +20,15 @@ function App() {
   const [inputMode, setInputMode] = useState<InputMode>('none');
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [description, setDescription] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLiveStreaming, setIsLiveStreaming] = useState(false);
   const [editingAnnotation, setEditingAnnotation] = useState<number | null>(null);
   const [tempAnnotation, setTempAnnotation] = useState('');
+  const [showQuoteDashboard, setShowQuoteDashboard] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
 
   const audioRecording = useAudioRecording(mediaFiles, setMediaFiles, setError, inputMode, setInputMode);
   
@@ -177,31 +181,61 @@ function App() {
         throw new Error('Analysis failed');
       }
 
-      const result = await response.json();
-      setAnalysisResult(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+    const result = await response.json();
+    setAnalysisResult(result);
+    // Generate unique job ID for this analysis
+    setJobId(`job-${Date.now()}`);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'An error occurred');
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   const startNew = () => {
     setInputMode('none');
     setMediaFiles([]);
     setDescription('');
+    setZipCode('');
     setAnalysisResult(null);
     setError(null);
     setIsLiveStreaming(false);
+    setShowQuoteDashboard(false);
+    setJobId(null);
   };
 
+  const handleRequestQuotes = () => {
+    if (!zipCode || zipCode.length < 5) {
+      setError('Please enter a valid zip code to request quotes');
+      return;
+    }
+    setShowQuoteDashboard(true);
+  };
+
+  const handleBackFromQuotes = () => {
+    setShowQuoteDashboard(false);
+  };
+
+  // Show Quote Dashboard
+  if (showQuoteDashboard && analysisResult && jobId) {
+    return (
+      <QuoteDashboard
+        jobId={jobId}
+        zipCode={zipCode}
+        analysisResult={analysisResult}
+      />
+    );
+  }
+
+  // Show Analysis Results
   if (analysisResult) {
     return (
       <AnalysisResultCard
         result={analysisResult}
         mediaFiles={mediaFiles}
+        zipCode={zipCode}
         onStartNew={startNew}
-        onRequestQuotes={() => alert('Quote request feature coming soon!')}
+        onRequestQuotes={handleRequestQuotes}
       />
     );
   }
@@ -254,6 +288,29 @@ function App() {
               onAnnotationChange={setTempAnnotation}
             />
 
+            {/* Zip Code Input */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Zip Code
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <input
+                type="text"
+                value={zipCode}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 5);
+                  setZipCode(value);
+                }}
+                placeholder="Enter your 5-digit zip code"
+                maxLength={5}
+                disabled={isAnalyzing}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                Required to find local contractors in your area
+              </p>
+            </div>
+
             {/* Text Description */}
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -281,7 +338,7 @@ function App() {
 
             {error && <ErrorMessage message={error} />}
 
-            <Button variant="secondary" fullWidth type="submit" disabled={isAnalyzing || inputMode === 'none'} className="py-4">
+            <Button variant="secondary" fullWidth type="submit" disabled={isAnalyzing || inputMode === 'none' || zipCode.length < 5} className="py-4">
               {isAnalyzing ? (
                 <>
                   <Spinner />
@@ -295,9 +352,11 @@ function App() {
               )}
             </Button>
 
-            {inputMode === 'none' && (
+            {(inputMode === 'none' || zipCode.length < 5) && (
               <p className="text-sm text-neutral-500 text-center -mt-4">
-                Please use live streaming or upload media to continue
+                {inputMode === 'none' 
+                  ? 'Please use live streaming or upload media to continue'
+                  : 'Please enter a valid 5-digit zip code'}
               </p>
             )}
           </form>

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:backend": "node server.js",
+    "dev:full": "npm run dev:backend & npm run dev",
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server.js",

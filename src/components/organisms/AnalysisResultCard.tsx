@@ -8,6 +8,7 @@ import { generateScopeOfWorkPDF } from '../../utils/pdfGenerator';
 interface AnalysisResultCardProps {
   result: AnalysisResult;
   mediaFiles: MediaFile[];
+  zipCode: string;
   onStartNew: () => void;
   onRequestQuotes: () => void;
 }
@@ -15,6 +16,7 @@ interface AnalysisResultCardProps {
 export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({
   result,
   mediaFiles,
+  zipCode,
   onStartNew,
   onRequestQuotes,
 }) => {

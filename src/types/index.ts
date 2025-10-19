@@ -6,6 +6,41 @@ export interface MediaFile {
   source?: 'upload' | 'live-stream'; // Track where the media came from
 }
 
+export interface ComputerUseSession {
+  id: string;
+  platform: 'taskrabbit' | 'thumbtack';
+  status: 'initializing' | 'navigating' | 'searching' | 'extracting' | 'completed' | 'error';
+  progress: number;
+  currentAction: string;
+  screenshot?: string;
+  contractors: ContractorLead[];
+  error?: string;
+  startTime: Date;
+  endTime?: Date;
+}
+
+export interface ContractorLead {
+  id: string;
+  name: string;
+  rating: number;
+  reviewCount: number;
+  price?: string;
+  description: string;
+  profileUrl: string;
+  phoneNumber?: string;
+  email?: string;
+  availability?: string;
+  platform: 'taskrabbit' | 'thumbtack';
+  profileImage?: string;
+}
+
+export interface QuoteRequest {
+  jobId: string;
+  zipCode: string;
+  analysisResult: AnalysisResult;
+  sessions: ComputerUseSession[];
+}
+
 export interface AnalysisResult {
   // ISSUE CLASSIFIER
   category: string;
