@@ -1,0 +1,18 @@
+# Cursor AI Rules for gemini-tedai
+
+## Documentation
+- **DO NOT** proactively create documentation files (*.md, README files, etc.) unless explicitly requested by the user
+- **DO NOT** create implementation docs, feature docs, or changelog files automatically
+- Only create documentation when the user specifically asks for it
+- Focus on code implementation rather than documentation
+
+## Code Changes
+- Prefer editing existing files over creating new ones
+- Make actual code changes rather than just suggesting them
+- Test and verify changes work correctly
+
+## Communication
+- Be concise in responses
+- Focus on solving the problem at hand
+- Avoid over-explaining unless asked
+

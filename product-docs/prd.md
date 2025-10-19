@@ -46,8 +46,7 @@ To become the most trusted and efficient way for homeowners to manage any home r
     - User can record or upload a video or audio (up to 60 seconds).
       - Video could also be Thermal camera footage for insulation/HVAC issues, Sound level measurements for noise complaints, etc.
     - User can upload up to 5 photos.
-    - User can add a voice note or text description.
-    - The interface will be media-first, guiding the user to "show, not just tell."
+    - User can add a text description.
 - **LATER:** Shot-List Coach (video gen)
   - If input footage is weak, auto-generate a short instruction video: “Stand 6 ft away, pan slowly; capture shutoff valve; include tape measure in frame,” then prompt the user to re-record.
 
