@@ -25,3 +25,21 @@ export interface AudioRecording {
 }
 
 export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopped';
+
+export interface LiveStreamSession {
+  id: string;
+  timestamp: Date;
+  duration: number;
+  transcript: TranscriptEntry[];
+  videoBlob?: Blob;
+  videoUrl?: string;
+}
+
+export interface TranscriptEntry {
+  id: string;
+  text: string;
+  speaker: 'user' | 'ai';
+  timestamp: number;
+}
+
+export type LiveStreamState = 'idle' | 'streaming' | 'stopped';

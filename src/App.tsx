@@ -10,7 +10,9 @@ import { MediaPreviewList } from './components/organisms/MediaPreviewList';
 import { AudioRecordingSection } from './components/organisms/AudioRecordingSection';
 import { AnalysisResultCard } from './components/organisms/AnalysisResultCard';
 import { AudioModal } from './components/molecules/AudioModal';
+import { LiveStreamModal } from './components/molecules/LiveStreamModal';
 import { useAudioRecording } from './hooks/useAudioRecording';
+import { useLiveStreaming } from './hooks/useLiveStreaming';
 import { MediaFile, AnalysisResult, InputMode } from './types';
 
 function App() {
@@ -25,6 +27,7 @@ function App() {
   const [tempAnnotation, setTempAnnotation] = useState('');
 
   const audioRecording = useAudioRecording(mediaFiles, setMediaFiles, setError, inputMode, setInputMode);
+  const liveStreaming = useLiveStreaming(setError);
 
   // Check if there are video or image files (audio files don't prevent live streaming)
   const hasVisualMedia = mediaFiles.some(file => file.type === 'video' || file.type === 'image');
@@ -34,7 +37,7 @@ function App() {
       setIsLiveStreaming(true);
       setInputMode('live-streaming');
       setError(null);
-      alert('Live video streaming with Gemini Live API coming soon! This will allow real-time AI analysis as you show the problem.');
+      await liveStreaming.openLiveModal();
     } catch (err) {
       setError('Failed to start live streaming');
       setIsLiveStreaming(false);
@@ -44,6 +47,7 @@ function App() {
   const stopLiveStreaming = () => {
     setIsLiveStreaming(false);
     setInputMode('none');
+    liveStreaming.closeLiveModal();
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'video' | 'image') => {
@@ -281,6 +285,23 @@ function App() {
         onDelete={audioRecording.deleteRecording}
         onUpload={audioRecording.uploadRecordings}
         onSelectRecording={audioRecording.setSelectedRecording}
+      />
+
+      <LiveStreamModal
+        isOpen={liveStreaming.showLiveModal}
+        onClose={liveStreaming.closeLiveModal}
+        streamState={liveStreaming.streamState}
+        sessions={liveStreaming.sessions}
+        selectedSession={liveStreaming.selectedSession}
+        currentTranscript={liveStreaming.currentTranscript}
+        streamDuration={liveStreaming.streamDuration}
+        videoRef={liveStreaming.videoRef}
+        mediaStream={liveStreaming.mediaStream}
+        onStart={liveStreaming.startStreaming}
+        onStop={liveStreaming.stopStreaming}
+        onDelete={liveStreaming.deleteSession}
+        onUpload={liveStreaming.uploadSessions}
+        onSelectSession={liveStreaming.setSelectedSession}
       />
     </div>
   );
