@@ -46,5 +46,5 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Start using startup script (generates config, then starts server)
-CMD ["./start.sh"]
+CMD ["sh", "./start.sh"]
 
