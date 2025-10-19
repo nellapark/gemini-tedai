@@ -13,7 +13,7 @@ import { AudioModal } from './components/molecules/AudioModal';
 import { LiveStreamModal } from './components/molecules/LiveStreamModal';
 import { useAudioRecording } from './hooks/useAudioRecording';
 import { useLiveStreaming } from './hooks/useLiveStreaming';
-import { MediaFile, AnalysisResult, InputMode } from './types';
+import { MediaFile, AnalysisResult, InputMode, LiveStreamSession } from './types';
 
 function App() {
   const [inputMode, setInputMode] = useState<InputMode>('none');
@@ -34,7 +34,40 @@ function App() {
     setInputMode('none');
   };
 
-  const liveStreaming = useLiveStreaming(setError, handleStreamingStopped);
+  // Callback for when live stream sessions are uploaded
+  const handleSessionsUploaded = (sessions: LiveStreamSession[]) => {
+    // Convert live stream sessions to MediaFile format
+    const newMediaFiles = sessions
+      .filter(session => session.videoBlob && session.videoUrl) // Only include sessions with video
+      .map((session) => {
+        // Create a File object from the video blob
+        const videoFile = new File(
+          [session.videoBlob!],
+          `live-stream-${session.timestamp.toISOString()}.webm`,
+          { type: 'video/webm' }
+        );
+
+        // Create a transcript summary for annotation
+        const transcriptText = session.transcript.length > 0
+          ? `\n\nTranscript:\n${session.transcript.map(t => `${t.speaker === 'user' ? 'You' : 'Gemini AI'}: ${t.text}`).join('\n')}`
+          : '';
+
+        return {
+          file: videoFile,
+          type: 'video' as const,
+          preview: session.videoUrl!,
+          annotation: `Live stream session from ${session.timestamp.toLocaleString()}\nDuration: ${Math.floor(session.duration / 60)}:${Math.floor(session.duration % 60).toString().padStart(2, '0')}${transcriptText}`,
+        };
+      });
+
+    // Add to existing media files and switch to upload mode
+    setMediaFiles(prev => [...prev, ...newMediaFiles]);
+    if (inputMode === 'live-streaming') {
+      setInputMode('upload');
+    }
+  };
+
+  const liveStreaming = useLiveStreaming(setError, handleStreamingStopped, handleSessionsUploaded);
 
   // Check if there are video or image files (audio files don't prevent live streaming)
   const hasVisualMedia = mediaFiles.some(file => file.type === 'video' || file.type === 'image');

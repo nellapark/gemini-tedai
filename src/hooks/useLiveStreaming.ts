@@ -3,7 +3,8 @@ import { LiveStreamSession, TranscriptEntry, LiveStreamState } from '../types';
 
 export const useLiveStreaming = (
   setError: (error: string | null) => void,
-  onStreamingStopped?: () => void
+  onStreamingStopped?: () => void,
+  onSessionsUploaded?: (sessions: LiveStreamSession[]) => void
 ) => {
   const [showLiveModal, setShowLiveModal] = useState(false);
   const [streamState, setStreamState] = useState<LiveStreamState>('idle');
@@ -889,8 +890,13 @@ Remember: You're helping them document and understand their repair issue through
 
   const uploadSessions = () => {
     if (sessions.length === 0) return;
-    // Sessions will be stored as live stream data type
-    // For now, just close the modal - in the future, these could be uploaded to the server
+    
+    // Call the callback to upload sessions to parent component
+    if (onSessionsUploaded) {
+      onSessionsUploaded(sessions);
+    }
+    
+    // Close the modal after uploading
     closeLiveModal();
   };
 
