@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import { LiveStreamSession, TranscriptEntry, LiveStreamState } from '../types';
 
 export const useLiveStreaming = (
-  setError: (error: string | null) => void
+  setError: (error: string | null) => void,
+  onStreamingStopped?: () => void
 ) => {
   const [showLiveModal, setShowLiveModal] = useState(false);
   const [streamState, setStreamState] = useState<LiveStreamState>('idle');
@@ -206,9 +207,19 @@ export const useLiveStreaming = (
         setSessions(prev => [...prev, newSession]);
         setSelectedSession(newSession.id);
         setStreamState('stopped');
+        
+        // Notify parent component that streaming has stopped
+        if (onStreamingStopped) {
+          onStreamingStopped();
+        }
       };
     } else {
       setStreamState('stopped');
+      
+      // Notify parent component that streaming has stopped
+      if (onStreamingStopped) {
+        onStreamingStopped();
+      }
     }
   };
 
@@ -261,6 +272,11 @@ export const useLiveStreaming = (
     setSelectedSession(null);
     setCurrentTranscript([]);
     setStreamDuration(0);
+    
+    // Notify parent component that streaming has stopped (if it was streaming)
+    if (onStreamingStopped) {
+      onStreamingStopped();
+    }
   };
 
   return {

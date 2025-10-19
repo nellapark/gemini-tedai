@@ -27,7 +27,14 @@ function App() {
   const [tempAnnotation, setTempAnnotation] = useState('');
 
   const audioRecording = useAudioRecording(mediaFiles, setMediaFiles, setError, inputMode, setInputMode);
-  const liveStreaming = useLiveStreaming(setError);
+  
+  // Callback for when streaming stops
+  const handleStreamingStopped = () => {
+    setIsLiveStreaming(false);
+    setInputMode('none');
+  };
+
+  const liveStreaming = useLiveStreaming(setError, handleStreamingStopped);
 
   // Check if there are video or image files (audio files don't prevent live streaming)
   const hasVisualMedia = mediaFiles.some(file => file.type === 'video' || file.type === 'image');
