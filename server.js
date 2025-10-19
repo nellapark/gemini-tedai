@@ -458,6 +458,12 @@ app.post('/api/request-quotes', async (req, res) => {
       return res.status(400).json({ error: 'Job ID and zip code are required' });
     }
 
+    // Check if this job is already being processed
+    if (quoteSessions.has(jobId)) {
+      console.log(`Job ${jobId} is already being processed, returning existing session`);
+      return res.json({ success: true, jobId, alreadyRunning: true });
+    }
+
     console.log(`Starting quote search for job ${jobId} in zip code ${zipCode}`);
 
     // Initialize session storage
@@ -471,6 +477,7 @@ app.post('/api/request-quotes', async (req, res) => {
       sessions: [],
       contractors: [],
       clients: new Set(),
+      isRunning: true, // Add flag to track if search is in progress
     };
     quoteSessions.set(jobId, sessionData);
 
@@ -541,8 +548,9 @@ function broadcastToClients(jobId, data) {
 async function searchContractorsWithComputerUse(sessionData) {
   const { jobId, zipCode, category, subcategory, problemSummary } = sessionData;
   
-  // Create sessions for both platforms
+  // Create sessions for both platforms - EXACTLY 2 SESSIONS
   const platforms = ['taskrabbit', 'thumbtack'];
+  console.log(`Creating ${platforms.length} Computer Use Agent sessions for job ${jobId}: ${platforms.join(', ')}`);
   
   // Run searches in parallel
   const searchPromises = platforms.map(platform => 
@@ -552,13 +560,27 @@ async function searchContractorsWithComputerUse(sessionData) {
   try {
     await Promise.all(searchPromises);
     
+    console.log(`Completed all ${platforms.length} searches for job ${jobId}`);
+    
+    // Mark session as completed
+    sessionData.isRunning = false;
+    
     // Broadcast completion
     broadcastToClients(jobId, { 
       type: 'complete',
       totalContractors: sessionData.contractors.length 
     });
+    
+    // Clean up session after 5 minutes
+    setTimeout(() => {
+      quoteSessions.delete(jobId);
+      console.log(`Cleaned up session data for job ${jobId}`);
+    }, 5 * 60 * 1000);
+    
   } catch (error) {
     console.error('Error in quote search:', error);
+    sessionData.isRunning = false;
+    
     broadcastToClients(jobId, { 
       type: 'error',
       message: error.message 
@@ -570,6 +592,8 @@ async function searchContractorsWithComputerUse(sessionData) {
 async function searchPlatform(platform, sessionData) {
   const { jobId, zipCode, category, subcategory, problemSummary } = sessionData;
   const sessionId = `${platform}-${Date.now()}`;
+  
+  console.log(`[${jobId}] Starting Computer Use Agent session for ${platform.toUpperCase()}`);
   
   // Initialize session state
   const session = {
@@ -767,10 +791,11 @@ async function searchPlatform(platform, sessionData) {
       endTime: new Date(),
     });
     
+    console.log(`[${jobId}] Successfully completed ${platform.toUpperCase()} search - found ${formattedContractors.length} contractors`);
     broadcastToClients(jobId, { type: 'session_update', session });
 
   } catch (error) {
-    console.error(`Error searching ${platform}:`, error);
+    console.error(`[${jobId}] Error searching ${platform.toUpperCase()}:`, error.message);
     
     updateSession(session, {
       status: 'error',
@@ -785,9 +810,9 @@ async function searchPlatform(platform, sessionData) {
     if (stagehand) {
       try {
         await stagehand.close();
-        console.log(`Closed Stagehand for ${platform}`);
+        console.log(`[${jobId}] Closed Stagehand session for ${platform.toUpperCase()}`);
       } catch (e) {
-        console.error('Error closing Stagehand:', e);
+        console.error(`[${jobId}] Error closing Stagehand for ${platform}:`, e);
       }
     }
   }
